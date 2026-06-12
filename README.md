@@ -1,6 +1,6 @@
 # prisma-autoread
 
-[![npm version](https://img.shields.io/npm/v/prisma-autoread.svg)](https://www.npmjs.com/package/prisma-autoread)
+[![npm version](https://img.shields.io/npm/v/@didactika/prisma-autoread.svg)](https://www.npmjs.com/package/@didactika/prisma-autoread)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
