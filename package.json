@@ -1,14 +1,22 @@
 {
-  "name": "prisma-autoread",
+  "name": "@didactika/prisma-autoread",
   "version": "0.1.0",
-  "description": "Automatic Express REST read endpoints with Prisma-aware filtering, pagination, and relation includes",
+  "description": "Auto-generate Express GET list endpoints from your Prisma schema — type-aware filtering, pagination, search, and relation includes from the query string, zero boilerplate.",
   "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "test": "jest",
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:integration": "jest --testPathPattern=tests/integration",
@@ -39,7 +47,7 @@
     "url": "https://github.com/didactika/prisma-autoread/issues"
   },
   "peerDependencies": {
-    "@prisma/client": ">=5.0.0",
+    "@prisma/client": ">=6.0.0",
     "express": ">=4.0.0"
   },
   "dependencies": {
@@ -57,6 +65,7 @@
     "prisma": "^6.0.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.0.0"
   }
 }
