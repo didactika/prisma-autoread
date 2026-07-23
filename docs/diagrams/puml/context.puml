@@ -1,0 +1,48 @@
+@startuml context
+' Business-level state machine: what a search *is* at each moment, and the
+' operations that move it forward.
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam state {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  FontColor #222222
+  ArrowColor #333333
+}
+
+[*] --> ENDPOINT_UNDECLARED
+
+ENDPOINT_UNDECLARED --> ENDPOINT_READY       : declareEndpoint()
+ENDPOINT_READY      --> ENDPOINT_UNDECLARED  : retireEndpoint()
+
+ENDPOINT_READY      --> REQUEST_RECEIVED     : receiveRequest()
+REQUEST_RECEIVED    --> REQUEST_INTERPRETED  : interpretRequest()
+REQUEST_INTERPRETED --> REQUEST_VALIDATED    : validateFields()
+REQUEST_VALIDATED   --> REQUEST_AUTHORISED   : enforcePolicy()
+REQUEST_AUTHORISED  --> PLAN_READY           : buildPlan()
+
+PLAN_READY          --> PLAN_READY           : rememberPlan()
+ENDPOINT_READY      --> PLAN_READY           : reusePlan()
+
+PLAN_READY          --> RESULT_READY         : searchRecords()
+PLAN_READY          --> RESULT_READY         : countMatches()
+PLAN_READY          --> RESULT_READY         : summariseValues()
+PLAN_READY          --> RESULT_READY         : groupResults()
+
+RESULT_READY        --> PAGE_READY           : paginateResults()
+PAGE_READY          --> ANSWER_FORMATTED     : chooseFormat()
+ANSWER_FORMATTED    --> ENDPOINT_READY       : deliverAnswer()
+
+REQUEST_INTERPRETED --> REQUEST_REJECTED     : rejectRequest()
+REQUEST_VALIDATED   --> REQUEST_REJECTED     : rejectRequest()
+REQUEST_AUTHORISED  --> REQUEST_REJECTED     : denyAccess()
+REQUEST_REJECTED    --> ENDPOINT_READY       : reportError()
+
+ENDPOINT_UNDECLARED --> [*]
+
+note bottom of REQUEST_REJECTED
+  Nothing is queried until it has been
+  validated and authorised.
+end note
+@enduml

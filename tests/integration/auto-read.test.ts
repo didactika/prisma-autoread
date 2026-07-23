@@ -4,8 +4,8 @@ jest.mock('@prisma/client', () => setupPrismaMock());
 
 import express, { Router } from 'express';
 import request from 'supertest';
-import AutoReadMiddleware from '../../src/middlewares/auto-read.middleware';
-import FilterMiddleware from '../../src/middlewares/filter.middleware';
+import AutoReadMiddleware from '../../src/legacy/auto-read.middleware';
+import FilterMiddleware from '../../src/legacy/filter.middleware';
 import { AutoReadConfig, PrismaQueryArgs } from '../../src/types';
 
 // ── Fake data store ────────────────────────────────────────────────────────────

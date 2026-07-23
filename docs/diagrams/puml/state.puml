@@ -1,0 +1,60 @@
+@startuml state
+' Technical lifecycle of one request inside the pipeline, including every exit.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam state {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  ArrowColor #333333
+}
+
+[*] --> RECEIVED : normaliseRequest()
+
+RECEIVED --> METHOD_REJECTED : methodNotExposed()
+METHOD_REJECTED --> [*] : passThrough()
+
+RECEIVED --> PLAN_LOOKUP : acceptMethod()
+
+state PLAN_LOOKUP {
+  [*] --> CACHE_PROBE
+  CACHE_PROBE --> CACHE_HIT  : signatureFound()
+  CACHE_PROBE --> CACHE_MISS : cacheOffOrAbsent()
+}
+
+CACHE_HIT  --> PLANNED
+CACHE_MISS --> ADAPTER_RESOLUTION
+
+ADAPTER_RESOLUTION --> NO_ADAPTER : noneSupports()
+NO_ADAPTER --> FAILED : notImplemented()
+
+ADAPTER_RESOLUTION --> PARSING : selectAdapter()
+PARSING --> FAILED     : malformedGrammar()
+PARSING --> VALIDATING : parseSucceeded()
+
+VALIDATING --> FAILED  : unknownFieldOrOperator()
+VALIDATING --> DENIED  : outsideAllowList()
+DENIED     --> FAILED  : refuse()
+VALIDATING --> PLANNED : buildPlan()
+
+PLANNED   --> EXECUTING : run()
+EXECUTING --> FAILED    : databaseError()
+EXECUTING --> RENDERING : resultReady()
+
+RENDERING --> FAILED    : unknownOutputFormat()
+RENDERING --> RESPONDED : payloadBuilt()
+
+RESPONDED --> [*] : respond200()
+FAILED    --> [*] : handleError()
+
+note right of VALIDATING
+  Every path out of here has consulted
+  both the schema and the security policy.
+  Nothing reaches EXECUTING unvalidated.
+end note
+
+note right of CACHE_HIT
+  A cached plan was already validated
+  and authorised; the key includes
+  method, route, query and body.
+end note
+@enduml

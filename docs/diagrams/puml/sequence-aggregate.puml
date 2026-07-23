@@ -1,0 +1,28 @@
+@startuml sequence-aggregate
+' Aggregations reuse the same filter as the list route.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #999999
+  ParticipantBackgroundColor #F2F2F2
+  ParticipantBorderColor #666666
+}
+autonumber
+
+actor Client
+participant "EndpointController" as C
+participant "AggregateRoute"     as R
+participant "Executor"           as E
+participant "Prisma"             as P
+
+Client -> C : GET /users/aggregate?avg=age&count=true
+C -> C : build QuerySpec (_avg, _count, where)
+C -> R : execute(spec, ctx)
+R -> E : aggregate(spec)
+E -> P : aggregate({ where, _avg, _count })
+P --> E : { _count, _avg }
+E --> R : result
+R --> C : sanitised body
+C --> Client : 200\n{ "_count": 3, "_avg": { "age": 30 } }
+@enduml

@@ -2,8 +2,8 @@
  * Mock Prisma DMMF for unit and integration tests.
  *
  * Models:
- *   User          – id(Int), firstName(String), lastName(String), email(String), age(Int), active(Boolean)
- *   Campus        – id(Int), name(String), uuid(String)
+ *   User          – id(Int), firstName(String), lastName(String), email(String), age(Int), active(Boolean), metadata(Json)
+ *   Campus        – id(Int), name(String), uuid(String), settings(Json)
  *   UserEnrolment – id(Int), userId(Int), campusId(Int), user→User, campus→Campus
  */
 
@@ -44,6 +44,7 @@ export const mockDmmf = {
                     makeScalar('email', 'String'),
                     makeScalar('age', 'Int'),
                     makeScalar('active', 'Boolean'),
+                    makeScalar('metadata', 'Json'),
                     makeRelation('enrolments', 'UserEnrolment', true),
                 ],
             },
@@ -53,6 +54,7 @@ export const mockDmmf = {
                     makeScalar('id', 'Int'),
                     makeScalar('name', 'String'),
                     makeScalar('uuid', 'String'),
+                    makeScalar('settings', 'Json'),
                     makeRelation('enrolments', 'UserEnrolment', true),
                 ],
             },

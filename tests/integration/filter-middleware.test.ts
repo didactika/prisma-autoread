@@ -3,7 +3,7 @@ import { setupPrismaMock } from '../helpers/mock-dmmf';
 jest.mock('@prisma/client', () => setupPrismaMock());
 
 import { mockRequest, mockResponse, mockNext } from '../helpers/mock-request';
-import FilterMiddleware from '../../src/middlewares/filter.middleware';
+import FilterMiddleware from '../../src/legacy/filter.middleware';
 
 // Helper: run the async middleware and await the result
 async function runFilterMiddleware(

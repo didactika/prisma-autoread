@@ -1,4 +1,4 @@
-import FilterValueParser from '../../src/middlewares/utils/filter-value-parser.util';
+import FilterValueParser from '../../src/legacy/utils/filter-value-parser.util';
 
 describe('FilterValueParser.parseStringValue', () => {
     // ── Non-string pass-through ─────────────────────────────────────────────

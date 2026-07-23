@@ -1,0 +1,32 @@
+@startuml sequence-cache
+' The same request again — the plan is reused.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #999999
+  ParticipantBackgroundColor #F2F2F2
+  ParticipantBorderColor #666666
+}
+autonumber
+
+actor Client
+participant "EndpointController" as C
+participant "PlanCache"          as PC
+participant "Route"              as R
+participant "Executor"           as E
+
+Client -> C : the same request again
+C -> PC : get(signature)
+PC --> C : QuerySpec (hit)
+note over C
+  Parsing, validation and coercion
+  are all skipped.
+end note
+C -> R : execute(spec, ctx)
+R -> E : list(spec)
+E --> R : QueryResult
+R --> C : RouteResult
+C -> C : onQuery({ cacheHit:true })
+C --> Client : 200
+@enduml

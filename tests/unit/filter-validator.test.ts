@@ -2,7 +2,7 @@ import { setupPrismaMock } from '../helpers/mock-dmmf';
 
 jest.mock('@prisma/client', () => setupPrismaMock());
 
-import FilterValidator from '../../src/middlewares/utils/filter-validator.util';
+import FilterValidator from '../../src/legacy/utils/filter-validator.util';
 
 describe('FilterValidator', () => {
     describe('getModelInfo', () => {

@@ -1,0 +1,112 @@
+import type { InputRegistry } from '../input/input-registry';
+import type { OutputRegistry } from '../output/output-registry';
+import type { PlanCache } from '../core/cache';
+import type { EngineDefaults, ResolvedSecurity, QuerySpec, JsonPathSyntax } from './query';
+import type { PrismaDelegate, FindByFilter, DatasourceProvider } from './prisma';
+import type { KeywordMap, KeywordOverrides } from './keywords';
+
+export type RouteName = 'list' | 'count' | 'aggregate' | 'groupBy';
+
+/** Per-route customisation. */
+export interface RouteConfig {
+    path?: string;
+}
+
+/**
+ * Which routes to expose. Short form `['list', 'count']` uses default paths;
+ * the map form lets you override each path: `{ count: { path: '/total' } }`.
+ */
+export type RoutesOption = RouteName[] | Partial<Record<RouteName, boolean | RouteConfig>>;
+
+/** Access-control knobs for the generated endpoint. */
+export interface SecurityOptions {
+    /**
+     * Deny by default. When `true`, `fields` (and `relations`, if the model has any
+     * you intend to expose) must be explicit allow-lists — `'*'` is rejected.
+     */
+    strict?: boolean;
+    /** Allowed filter/sort/select fields (`'*'` = all). */
+    fields?: '*' | string[];
+    /** Allowed relations to traverse/include (`'*'` = all). */
+    relations?: '*' | string[];
+    /** Maximum filter/include nesting depth (default 12). */
+    maxDepth?: number;
+}
+
+/** Timing/telemetry passed to the optional `onQuery` hook. */
+export interface QueryTelemetry {
+    route: RouteName;
+    format: string;
+    method: string;
+    /** Milliseconds spent parsing/validating the request into a query plan. */
+    parseMs: number;
+    /** Milliseconds spent executing against the database. */
+    execMs: number;
+    /** Whether the query plan came from the cache. */
+    cacheHit: boolean;
+}
+
+/** Public configuration accepted by `createAutoRead`. */
+export interface AutoReadOptions {
+    /** Prisma model name (schema casing, e.g. `'User'`). */
+    model: string;
+    /** Prisma model delegate (`prisma.user`). Enables every route. */
+    delegate?: PrismaDelegate;
+    /** Legacy-style callback, as an alternative to `delegate`. */
+    findByFilter?: FindByFilter;
+    /** HTTP methods to expose. Default `['GET']`. */
+    methods?: string[];
+    /** Routes to generate. Default `['list']`. */
+    routes?: RoutesOption;
+    /** Output format name. Default `'hal'`. */
+    output?: string;
+    /** Accept the old GET query syntax (via the legacy engine). Default `true`. */
+    legacy?: boolean;
+    /** GET dialects to accept when `legacy` is false. Default `['query','rsql','odata']`. */
+    formats?: Array<'query' | 'rsql' | 'odata'>;
+    /** Fields scanned by the search keyword. */
+    searchable?: string[];
+    /** Pagination/sort defaults. */
+    defaults?: Partial<EngineDefaults>;
+    /** Access control. */
+    security?: SecurityOptions;
+    /** Prefix inserted into generated links (e.g. `'/api/v1'`). */
+    basePathPrefix?: string;
+    /** Cache parsed query plans by request signature. `true` uses a 500-entry LRU. */
+    cache?: boolean | { max?: number };
+    /** Telemetry hook invoked after each request with timing info. */
+    onQuery?: (telemetry: QueryTelemetry) => void;
+    /** Rename reserved query parameters for this endpoint only. */
+    keywords?: KeywordOverrides;
+    /**
+     * Datasource provider, used to pick the JSON `path` syntax. Auto-detected from
+     * the Prisma client when possible; falls back to `'array'`.
+     */
+    provider?: DatasourceProvider | string;
+    /** Force the JSON `path` syntax, bypassing provider detection. */
+    jsonPathSyntax?: JsonPathSyntax;
+}
+
+export interface ResolvedRoute {
+    name: RouteName;
+    path: string;
+}
+
+/** Fully-normalised options consumed by the HTTP layer. */
+export interface ResolvedOptions {
+    model: string;
+    source: { delegate?: PrismaDelegate; finder?: FindByFilter };
+    input: InputRegistry;
+    output: OutputRegistry;
+    outputFormat: string;
+    methods: string[];
+    routes: ResolvedRoute[];
+    defaults: EngineDefaults;
+    searchable: string[];
+    security: ResolvedSecurity;
+    keywords: KeywordMap;
+    jsonPathSyntax: JsonPathSyntax;
+    basePathPrefix?: string;
+    cache?: PlanCache<QuerySpec>;
+    onQuery?: (telemetry: QueryTelemetry) => void;
+}

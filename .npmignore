@@ -22,8 +22,11 @@ tsconfig.test.json
 *.swp
 *.swo
 
-# Docs (excepto README)
+# Docs (everything but the README)
 docs/
+AGENTS.md
+CHANGELOG.md
+CONTRIBUTING.md
 *.md
 !README.md
 

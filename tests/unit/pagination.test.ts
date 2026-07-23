@@ -1,5 +1,5 @@
 import { mockRequest, mockResponse, mockNext } from '../helpers/mock-request';
-import PaginationMiddleware from '../../src/middlewares/pagination.middleware';
+import PaginationMiddleware from '../../src/legacy/pagination.middleware';
 
 describe('PaginationMiddleware.processPagination', () => {
     const middleware = PaginationMiddleware.processPagination(10, 100);

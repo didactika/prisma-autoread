@@ -1,7 +1,7 @@
 {
   "name": "@didactika/prisma-autoread",
-  "version": "0.1.0",
-  "description": "Auto-generate Express GET list endpoints from your Prisma schema — type-aware filtering, pagination, search, and relation includes from the query string, zero boilerplate.",
+  "version": "1.0.0",
+  "description": "Auto-generate Express search endpoints from your Prisma schema — GET/QUERY/POST, Prisma-native filtering, RSQL & OData, aggregations, cursor pagination and HAL/JSON:API/CSV output, zero boilerplate.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -22,20 +22,29 @@
     "test:integration": "jest --testPathPattern=tests/integration",
     "test:e2e": "prisma generate && prisma db push --force-reset && jest --testPathPattern=tests/e2e",
     "test:coverage": "jest --coverage",
-    "prepublishOnly": "npm run test && npm run build"
+    "prepublishOnly": "npm run test:unit && npm run test:integration && npm run build"
   },
   "keywords": [
     "prisma",
     "express",
     "rest",
     "filter",
+    "search",
     "pagination",
+    "cursor",
+    "rsql",
+    "odata",
+    "jsonapi",
+    "hal",
+    "aggregate",
+    "query-method",
     "middleware",
     "autoread"
   ],
   "author": "Didactika <info@didactika.org>",
   "contributors": [
-    "Eduardo Estrada <me@e2rd0.com>"
+    "Eduardo Estrada <me@e2rd0.com>",
+    "Hector Arrechea <hectorlazaroarrechea@gmail.com>"
   ],
   "license": "MIT",
   "repository": {
@@ -46,8 +55,11 @@
   "bugs": {
     "url": "https://github.com/didactika/prisma-autoread/issues"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "peerDependencies": {
-    "@prisma/client": ">=6.0.0",
+    "@prisma/client": ">=5.0.0",
     "express": ">=4.0.0"
   },
   "dependencies": {

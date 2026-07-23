@@ -1,0 +1,159 @@
+@startuml domain-model
+' The ideas the library works with, named in the language of the problem.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam class {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  ArrowColor #333333
+}
+hide circle
+
+class Resource {
+  name
+  format
+  --
+  expose()
+  retire()
+  offers()
+  allows(field)
+  nameOf(parameter)
+}
+
+class Operation {
+  kind
+  address
+  --
+  run()
+}
+
+class SearchRequest {
+  protocol
+  method
+  --
+  narrow(filter)
+  order(sorting)
+  choose(fields)
+  askPage(page)
+  send()
+}
+
+class Filter {
+  combinator
+  --
+  add(condition)
+  nest(filter)
+  describe()
+}
+
+class Condition {
+  field
+  comparison
+  value
+  --
+  appliesTo(record)
+  reachesThrough()
+}
+
+class Relation {
+  name
+  cardinality
+  quantifier
+  --
+  reach()
+}
+
+class Sorting {
+  field
+  direction
+  --
+  apply()
+}
+
+class FieldSelection {
+  fields
+  related
+  --
+  narrow()
+}
+
+class Page {
+  size
+  number
+  cursor
+  --
+  first()
+  next()
+  previous()
+}
+
+class ResultPage {
+  records
+  total
+  --
+  links()
+  isEmpty()
+  hasNext()
+}
+
+class Record {
+  identifier
+  values
+}
+
+class Summary {
+  totals
+  averages
+  minimums
+  maximums
+  groupedBy
+  --
+  summarise()
+  group()
+}
+
+class AccessPolicy {
+  searchableFields
+  reachableRelations
+  maxDepth
+  --
+  allows(field)
+  permits(relation)
+  withinDepth(filter)
+}
+
+class ParameterNames {
+  filter
+  sort
+  fields
+  page
+  limit
+  cursor
+  --
+  rename(parameter, name)
+  nameOf(parameter)
+}
+
+Resource "1" *-- "1..*" Operation      : offers
+Resource "1" *-- "1"    AccessPolicy   : is protected by
+Resource "1" *-- "1"    ParameterNames : is asked with
+Resource "1" o-- "0..*" Relation       : is linked through
+
+SearchRequest "1" --> "1"    Operation      : asks for
+SearchRequest "1" *-- "0..1" Filter         : narrows with
+SearchRequest "1" *-- "0..*" Sorting        : orders by
+SearchRequest "1" *-- "0..1" FieldSelection : chooses
+SearchRequest "1" *-- "0..1" Page           : asks one
+
+Filter "1" *-- "1..*" Condition : is made of
+Filter "1" o-- "0..*" Filter    : may nest
+Condition "0..1" --> "1" Relation : may reach through
+
+SearchRequest ..> ResultPage : produces
+ResultPage "1" *-- "0..*" Record  : contains
+ResultPage "0..1" --> "1" Summary : may be
+
+AccessPolicy ..> Condition      : may refuse
+AccessPolicy ..> FieldSelection : may narrow
+ParameterNames ..> SearchRequest : names the parts of
+@enduml

@@ -1,4 +1,4 @@
-import IncludeParser from '../../src/middlewares/utils/include-parser.util';
+import IncludeParser from '../../src/legacy/utils/include-parser.util';
 
 describe('IncludeParser.parse', () => {
     // ── Wildcard ─────────────────────────────────────────────────────────────
