@@ -2,7 +2,8 @@
 
 Releases are automated: when a push to `main` passes the whole CI matrix and the
 version in `package.json` has no matching tag, CI creates that tag and starts the
-release workflow. Only a green build reaches npm.
+release workflow. After npm publishes successfully, the workflow creates the matching
+GitHub Release with generated notes. Only a green build reaches npm.
 
 ```bash
 npm version 1.0.1 --no-git-tag-version
@@ -14,6 +15,9 @@ git push origin main
 Tags can still be pushed manually; `release.yml` continues to accept `v*.*.*` tag
 pushes and manual dispatches. The automatic path runs the test matrix once in
 `ci.yml`; a manually pushed tag runs it from `release.yml` before publishing.
+If the reusable CI job is skipped because the main CI already passed, `publish` is
+explicitly enabled after a successful release validation so GitHub does not propagate
+the skipped state.
 
 ## How to authenticate — two options
 
@@ -89,6 +93,7 @@ What **does** break CI:
 | `dist/index.js`, `.mjs` and `.d.ts` exist and are non-empty | The build really produced something. |
 | The package imports as CJS **and** ESM | `createAutoRead` is reachable both ways. |
 | The tarball has no `src/`, `tests/`, `docs/`, `examples/` or `AGENTS.md` | Only `dist` ships. |
+| GitHub Release creation after npm publish | The tag, npm version and release notes stay aligned. |
 
 It publishes with `--provenance`, so npm shows a verified link from the published
 tarball back to the exact commit and workflow run that built it.
