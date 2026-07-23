@@ -84,11 +84,3 @@ createAutoRead({ model: 'User', delegate: prisma.user, legacy: false });
 | `defaultLimit` / `maxLimit` | `defaults.limit` / `defaults.maxLimit` |
 | `basePathPrefix` | `basePathPrefix` |
 | `jsonPathSyntax` | `jsonPathSyntax` (now auto-detected from the provider) |
-
-## Checklist
-
-- [ ] Upgrade the package; run your test suite — the old path should be untouched.
-- [ ] Replace the middleware pair with `createAutoRead({ … })` (`legacy: true`).
-- [ ] Add `routes: ['list', 'count']` and any format you want.
-- [ ] Add a `security` allow-list for public endpoints.
-- [ ] When clients are ready, flip `legacy: false` and update their query strings.
