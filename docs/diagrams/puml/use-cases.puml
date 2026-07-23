@@ -1,0 +1,75 @@
+@startuml use-cases
+' Source of truth for the use case diagram.
+' Rendered on GitHub through the PlantUML proxy — see ../use-cases.md
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam usecase {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  ArrowColor #333333
+}
+skinparam actor {
+  BorderColor #333333
+  BackgroundColor white
+}
+
+rectangle "Search Endpoint" {
+
+  actor "API Consumer"       as consumer
+  actor "Backend Developer"  as developer
+  actor "Operator"           as operator
+
+  usecase "filterRecords()"    as UC_FILTER
+  usecase "searchRecords()"    as UC_SEARCH
+  usecase "sortResults()"      as UC_SORT
+  usecase "selectFields()"     as UC_SELECT
+  usecase "includeRelated()"   as UC_INCLUDE
+  usecase "paginateResults()"  as UC_PAGINATE
+  usecase "searchAllFields()"  as UC_SEARCHALL
+  usecase "countMatches()"     as UC_COUNT
+  usecase "summariseValues()"  as UC_SUMMARISE
+  usecase "groupResults()"     as UC_GROUP
+  usecase "chooseFormat()"     as UC_FORMAT
+  usecase "sendQueryInBody()"  as UC_BODY
+
+  usecase "exposeResource()"   as UC_EXPOSE
+  usecase "restrictAccess()"   as UC_RESTRICT
+  usecase "renameParameters()" as UC_RENAME
+  usecase "chooseOperations()" as UC_OPERATIONS
+  usecase "bindFramework()"    as UC_BIND
+
+  usecase "watchTimings()"     as UC_WATCH
+  usecase "cacheSearches()"    as UC_CACHE
+
+  consumer --> UC_SEARCH
+  consumer --> UC_SORT
+  consumer --> UC_SELECT
+  consumer --> UC_INCLUDE
+  consumer --> UC_PAGINATE
+  consumer --> UC_COUNT
+  consumer --> UC_SUMMARISE
+  consumer --> UC_GROUP
+  consumer --> UC_FORMAT
+  consumer --> UC_BODY
+  consumer --> UC_SEARCHALL
+
+  developer --> UC_EXPOSE
+  developer --> UC_RESTRICT
+  developer --> UC_RENAME
+  developer --> UC_OPERATIONS
+  developer --> UC_BIND
+
+  operator --> UC_WATCH
+  operator --> UC_CACHE
+
+  UC_SEARCH    ..> UC_FILTER : <<include>>
+  UC_COUNT     ..> UC_FILTER : <<include>>
+  UC_SUMMARISE ..> UC_FILTER : <<include>>
+  UC_GROUP     ..> UC_FILTER : <<include>>
+  UC_SEARCHALL ..> UC_FILTER : <<extend>>
+  UC_PAGINATE  ..> UC_SEARCH : <<extend>>
+  UC_RESTRICT  ..> UC_FILTER : <<constrains>>
+}
+@enduml

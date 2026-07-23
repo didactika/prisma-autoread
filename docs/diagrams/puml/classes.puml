@@ -1,0 +1,217 @@
+@startuml classes
+' Implementation classes and interfaces. Type declarations live in src/types/*.d.ts
+' and are omitted here.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam class {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  ArrowColor #333333
+}
+hide circle
+
+package "entry" {
+  class AutoReadEndpoint {
+    -options
+    +config
+    +createController()
+    +applyTo(router)
+    +applyToFastify(app)
+    +applyToHono(app)
+  }
+}
+
+package "config" {
+  class OptionsResolver <<static>> {
+    +resolve(options)
+  }
+  class Keywords <<static>> {
+    +DEFAULTS
+    +configure(overrides)
+    +resolve(overrides)
+    +current()
+    +reset()
+  }
+  class ProviderDetector <<static>> {
+    +syntaxFor(provider)
+    +detect(delegate)
+    +resolve(options)
+  }
+}
+
+package "http" {
+  class EndpointController {
+    -executor
+    -routes
+    +handles(method)
+    +handle(route, request)
+  }
+  class ExpressBinding {
+    +apply(router)
+  }
+  class FastifyBinding {
+    +apply(fastify)
+  }
+  class HonoBinding {
+    +apply(app)
+  }
+  class QueryStringParser <<static>> {
+    +fromUrl(url)
+    +parse(search)
+  }
+}
+
+package "input" {
+  interface InputAdapter {
+    +name
+    +supports(input, keywords)
+    +parse(input, ctx)
+  }
+  class InputRegistry {
+    +register(adapter)
+    +resolve(input, keywords)
+  }
+  class QueryBracketsAdapter
+  class RsqlAdapter
+  class ODataAdapter
+  class JsonBodyAdapter
+  class LegacyAdapter
+  class QueryControlsParser {
+    +parse(query)
+  }
+  class RsqlParser <<static>> {
+    +parse(input)
+  }
+  class ODataParser <<static>> {
+    +parse(input)
+  }
+}
+
+package "core" {
+  class QueryBuilder <<static>> {
+    +build(raw, model, ctx)
+  }
+  class DmmfRegistry <<static>> {
+    +model(name)
+    +clear()
+  }
+  class ModelMeta {
+    +field(name)
+    +relation(name)
+    +isJson(name)
+  }
+  class ValueCoercer <<static>> {
+    +scalar(value, type)
+    +list(value, type)
+    +jsonLeaf(value)
+  }
+  class OperatorRegistry <<static>> {
+    +field(key)
+    +logical(key)
+    +isRelation(key)
+  }
+  class Executor {
+    +list(spec)
+    +count(spec)
+    +aggregate(spec)
+    +groupBy(spec)
+  }
+  class PlanCache {
+    +get(key)
+    +set(key, value)
+  }
+}
+
+package "routes" {
+  abstract class Route {
+    +name
+    +execute(spec, ctx)
+  }
+  class ListRoute
+  class CountRoute
+  class AggregateRoute
+  class GroupByRoute
+  class RouteRegistry {
+    +get(name)
+  }
+}
+
+package "output" {
+  interface OutputAdapter {
+    +name
+    +contentType
+    +format(result, ctx)
+  }
+  class OutputRegistry {
+    +register(adapter)
+    +get(name)
+  }
+  class HalOutput
+  class PlainOutput
+  class JsonApiOutput
+  class CsvOutput
+  class LinkBuilder {
+    +page(n, limit)
+    +cursor(c, limit)
+  }
+  class Serializer <<static>> {
+    +sanitize(value)
+  }
+}
+
+AutoReadEndpoint ..> OptionsResolver
+OptionsResolver ..> Keywords
+OptionsResolver ..> ProviderDetector
+AutoReadEndpoint --> EndpointController
+AutoReadEndpoint ..> ExpressBinding
+AutoReadEndpoint ..> FastifyBinding
+AutoReadEndpoint ..> HonoBinding
+
+ExpressBinding --> EndpointController
+FastifyBinding --> EndpointController
+HonoBinding --> EndpointController
+ExpressBinding ..> QueryStringParser
+FastifyBinding ..> QueryStringParser
+HonoBinding ..> QueryStringParser
+
+EndpointController --> InputRegistry
+EndpointController --> RouteRegistry
+EndpointController --> Executor
+EndpointController --> PlanCache
+
+InputRegistry o-- InputAdapter
+InputAdapter <|.. QueryBracketsAdapter
+InputAdapter <|.. RsqlAdapter
+InputAdapter <|.. ODataAdapter
+InputAdapter <|.. JsonBodyAdapter
+InputAdapter <|.. LegacyAdapter
+RsqlAdapter ..> RsqlParser
+ODataAdapter ..> ODataParser
+QueryBracketsAdapter ..> QueryControlsParser
+RsqlAdapter ..> QueryControlsParser
+QueryBracketsAdapter ..> QueryBuilder
+RsqlAdapter ..> QueryBuilder
+ODataAdapter ..> QueryBuilder
+JsonBodyAdapter ..> QueryBuilder
+
+QueryBuilder ..> DmmfRegistry
+QueryBuilder ..> ValueCoercer
+QueryBuilder ..> OperatorRegistry
+DmmfRegistry --> ModelMeta
+
+RouteRegistry o-- Route
+Route <|-- ListRoute
+Route <|-- CountRoute
+Route <|-- AggregateRoute
+Route <|-- GroupByRoute
+ListRoute ..> OutputRegistry
+ListRoute ..> Serializer
+
+OutputRegistry o-- OutputAdapter
+OutputAdapter <|.. HalOutput
+OutputAdapter <|.. PlainOutput
+OutputAdapter <|.. JsonApiOutput
+OutputAdapter <|.. CsvOutput
+HalOutput ..> LinkBuilder
+JsonApiOutput ..> LinkBuilder
+@enduml

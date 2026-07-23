@@ -1,0 +1,54 @@
+@startuml sequence-list
+' List request, cache miss — the full path.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #999999
+  ParticipantBackgroundColor #F2F2F2
+  ParticipantBorderColor #666666
+}
+autonumber
+
+actor Client
+participant "Binding"            as B
+participant "EndpointController" as C
+participant "InputRegistry"      as IR
+participant "InputAdapter"       as A
+participant "QueryBuilder"       as QB
+participant "DmmfRegistry"       as D
+participant "ListRoute"          as R
+participant "Executor"           as E
+participant "Prisma"             as P
+participant "OutputAdapter"      as O
+
+Client -> B : GET /users?filter[age][gte]=30
+B -> C : handle(route, request)
+C -> D : model("User")
+D --> C : ModelMeta (cached)
+C -> IR : resolve(input, keywords)
+IR --> C : QueryBracketsAdapter
+C -> A : parse(input, ctx)
+A -> QB : build(rawSpec, model, ctx)
+QB -> QB : validate fields + policy
+QB -> QB : map operators, coerce values
+QB --> A : QuerySpec
+A --> C : QuerySpec
+C -> R : execute(spec, ctx)
+R -> E : list(spec)
+
+par records and total
+  E -> P : findMany(args)
+also
+  E -> P : count({ where })
+end
+
+P --> E : rows, total
+E --> R : QueryResult
+R -> O : format(result, ctx)
+O --> R : payload (HAL)
+R --> C : RouteResult
+C -> C : onQuery({ parseMs, execMs, cacheHit:false })
+C --> B : HttpResponsePayload
+B --> Client : 200 application/json
+@enduml

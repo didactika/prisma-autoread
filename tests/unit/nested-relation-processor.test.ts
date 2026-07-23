@@ -2,9 +2,9 @@ import { setupPrismaMock } from '../helpers/mock-dmmf';
 
 jest.mock('@prisma/client', () => setupPrismaMock());
 
-import NestedRelationProcessor from '../../src/middlewares/utils/nested-relation-processor.util';
-import FilterValidator from '../../src/middlewares/utils/filter-validator.util';
-import { LikeFilter } from '../../src/types';
+import NestedRelationProcessor from '../../src/legacy/utils/nested-relation-processor.util';
+import FilterValidator from '../../src/legacy/utils/filter-validator.util';
+import { LikeFilter, JsonFilter } from '../../src/types';
 
 let userModel: any;
 let enrolmentModel: any;
@@ -114,6 +114,33 @@ describe('NestedRelationProcessor.processString', () => {
                 'unknownRelation[id]', '1', enrolmentModel, {}, []
             );
         }).toThrow();
+    });
+
+    it('emits a JsonFilter for a Json column (bracket string)', () => {
+        const filter: Record<string, any> = {};
+        const likeFilters: LikeFilter[] = [];
+        const jsonFilters: JsonFilter[] = [];
+
+        NestedRelationProcessor.processString(
+            'metadata[theme]', 'dark', userModel, filter, likeFilters, jsonFilters
+        );
+
+        expect(filter).toEqual({});
+        expect(jsonFilters).toEqual([
+            { field: 'metadata', path: ['theme'], mode: 'EXACT', value: 'dark' },
+        ]);
+    });
+
+    it('emits a JsonFilter for a Json column on a relation, with mode', () => {
+        const jsonFilters: JsonFilter[] = [];
+
+        NestedRelationProcessor.processString(
+            'campus[settings][bio][LIKE]', 'dev', enrolmentModel, {}, [], jsonFilters
+        );
+
+        expect(jsonFilters).toEqual([
+            { field: 'campus.settings', path: ['bio'], mode: 'LIKE', value: 'dev' },
+        ]);
     });
 });
 

@@ -1,0 +1,106 @@
+/**
+ * Query-model types. Declaration-only: no runtime code lives here.
+ */
+
+export type SortDir = 'asc' | 'desc';
+
+/** How Prisma expects a JSON `path` to be expressed, per datasource. */
+export type JsonPathSyntax = 'array' | 'string';
+
+/** Aggregation selectors shared by the aggregate and group-by routes. */
+export interface AggregationSpec {
+    _count?: boolean | Record<string, true>;
+    _sum?: Record<string, true>;
+    _avg?: Record<string, true>;
+    _min?: Record<string, true>;
+    _max?: Record<string, true>;
+}
+
+/** Prisma-ready query, produced by adapters and run by the executor. */
+export interface QuerySpec extends AggregationSpec {
+    where?: Record<string, any>;
+    orderBy?: Array<Record<string, SortDir>>;
+    select?: Record<string, any>;
+    include?: Record<string, any>;
+    skip?: number;
+    take?: number;
+    /** Distinct fields (list route). */
+    distinct?: string[];
+    /** Cursor position for cursor pagination (list route). */
+    cursor?: Record<string, any>;
+    /** Group-by fields (group-by route). */
+    by?: string[];
+    /** Group-by `having` clause. */
+    having?: Record<string, any>;
+}
+
+/**
+ * Pre-validation shape produced by an adapter before the builder coerces,
+ * validates and maps it to a {@link QuerySpec}. `where` here may use operator
+ * aliases (`gte`, `contains`, …) and raw string values.
+ */
+export interface RawSpec {
+    where?: Record<string, any>;
+    orderBy?: Array<Record<string, SortDir>>;
+    select?: Record<string, any>;
+    include?: Record<string, any>;
+    page?: number;
+    limit?: number;
+    skip?: number;
+    take?: number;
+    search?: string;
+    distinct?: string | string[];
+    cursor?: Record<string, any> | string | number;
+    count?: boolean | string | string[];
+    sum?: string | string[];
+    avg?: string | string[];
+    min?: string | string[];
+    max?: string | string[];
+    by?: string | string[];
+    having?: Record<string, any>;
+}
+
+/** HTTP-agnostic view of the request, consumed by input adapters. */
+export interface RequestInput {
+    /** Upper-case HTTP method: `GET` | `QUERY` | `POST`. */
+    method: string;
+    /** Parsed query string (deep-object form). */
+    query: Record<string, any>;
+    /** Parsed JSON body (for `QUERY` / `POST`). */
+    body?: any;
+}
+
+/** Default paging/sorting knobs resolved from config. */
+export interface EngineDefaults {
+    limit: number;
+    maxLimit: number;
+    sort: string;
+    order: SortDir;
+}
+
+/** Normalised access control applied while building the query. */
+export interface ResolvedSecurity {
+    /** `'*'` = any field; otherwise a set of allowed field names (lower-cased). */
+    fields: '*' | Set<string>;
+    /** `'*'` = any relation; otherwise a set of allowed relation names (lower-cased). */
+    relations: '*' | Set<string>;
+    /** Maximum filter/include nesting depth. */
+    maxDepth: number;
+}
+
+/** Everything the builder needs beyond the model metadata. */
+export interface BuildContext {
+    defaults: EngineDefaults;
+    /** Fields scanned by the search keyword. */
+    searchable: string[];
+    /** Optional access control; when omitted, everything is allowed. */
+    security?: ResolvedSecurity;
+    /** JSON `path` format to normalise to. Defaults to `'array'`. */
+    jsonPathSyntax?: JsonPathSyntax;
+}
+
+/** Result of a list execution. */
+export interface QueryResult<T = any> {
+    data: T[];
+    total: number;
+}

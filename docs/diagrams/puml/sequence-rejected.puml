@@ -1,0 +1,30 @@
+@startuml sequence-rejected
+' A request refused before any data is touched.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #999999
+  ParticipantBackgroundColor #F2F2F2
+  ParticipantBorderColor #666666
+}
+autonumber
+
+actor Client
+participant "Binding"            as B
+participant "EndpointController" as C
+participant "QueryBuilder"       as QB
+
+Client -> B : GET /users?filter[secret]=1
+B -> C : handle(route, request)
+C -> QB : build(rawSpec, model, ctx)
+
+alt field is not in the schema
+  QB -->x C : BadRequest("Unknown field 'secret'…")
+else field is outside the allow-list
+  QB -->x C : BadRequest("Cannot filter by field 'secret' (not allowed)")
+end
+
+C -->x B : throws
+B --> Client : 400 { "error": "…" }
+@enduml

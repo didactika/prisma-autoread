@@ -1,8 +1,8 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
-import AutoReadMiddleware from '../../src/middlewares/auto-read.middleware';
-import FilterMiddleware from '../../src/middlewares/filter.middleware';
+import AutoReadMiddleware from '../../src/legacy/auto-read.middleware';
+import FilterMiddleware from '../../src/legacy/filter.middleware';
 import {
     PrismaQueryArgs,
     AutoReadConfig,
@@ -51,6 +51,9 @@ async function findEnrolments(
 
 function buildUserApp(config: Partial<AutoReadConfig> = {}) {
     const app = express();
+    // Express 5 defaults to its "simple" query parser, which leaves bracket
+    // notation flat. The frozen legacy middleware expects qs-style objects.
+    app.set('query parser', 'extended');
 
     const router = Router();
     router.use(FilterMiddleware.processQueryFilters('user'));
@@ -71,6 +74,7 @@ function buildUserApp(config: Partial<AutoReadConfig> = {}) {
 
 function buildEnrolmentApp(config: Partial<AutoReadConfig> = {}) {
     const app = express();
+    app.set('query parser', 'extended');
 
     const router = Router();
     router.use(FilterMiddleware.processQueryFilters('userEnrolment'));
@@ -201,5 +205,45 @@ describe('[E2E] UserEnrolment endpoint – nested relation filters', () => {
         const res = await request(app).get('/enrolments?campus%5Buuid%5D=nonexistent-uuid');
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(0);
+    });
+});
+
+describe('[E2E] User list endpoint – OR / AND groups', () => {
+    // ?or[g1][firstName]=Alice&or[g1][lastName]=Jones
+    const OR_GROUP =
+        'or%5Bg1%5D%5BfirstName%5D=Alice&or%5Bg1%5D%5BlastName%5D=Jones';
+
+    it('matches records in either branch of an OR group', async () => {
+        const app = buildUserApp();
+        const res = await request(app).get(`/users?${OR_GROUP}`);
+
+        expect(res.status).toBe(200);
+        // Alice matches by firstName, Bob matches by lastName "Jones".
+        const names = res.body.data.map((u: any) => u.firstName).sort();
+        expect(names).toEqual(['Alice', 'Bob']);
+    });
+
+    it('ANDs a base filter with an OR group', async () => {
+        const app = buildUserApp();
+        const res = await request(app).get(`/users?active=true&${OR_GROUP}`);
+
+        expect(res.status).toBe(200);
+        // active=true AND (firstName=Alice OR lastName=Jones) → Alice only (Bob is inactive).
+        expect(res.body.data).toHaveLength(1);
+        expect(res.body.data[0].firstName).toBe('Alice');
+    });
+
+    it('treats two named groups as independent (AND of ORs)', async () => {
+        const app = buildUserApp();
+        // (firstName=Alice OR firstName=Bob) AND (age=35 OR age=25)
+        const res = await request(app).get(
+            '/users?or%5Bnames%5D%5BfirstName%5D=Alice&or%5Bnames%5D%5BlastName%5D=Jones' +
+            '&or%5Bages%5D%5Bage%5D=25'
+        );
+
+        expect(res.status).toBe(200);
+        // (Alice|Jones) AND age=25 → only Bob (25, Jones).
+        expect(res.body.data).toHaveLength(1);
+        expect(res.body.data[0].firstName).toBe('Bob');
     });
 });

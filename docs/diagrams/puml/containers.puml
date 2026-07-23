@@ -1,0 +1,99 @@
+@startuml containers
+' Internal building blocks and how a request moves through them.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam component {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+  ArrowColor #333333
+}
+skinparam rectangle {
+  BorderColor #999999
+}
+
+actor "HTTP client" as client
+
+rectangle "prisma-autoread" {
+
+  rectangle "Bindings" as bindings {
+    component "ExpressBinding" as express
+    component "FastifyBinding" as fastify
+    component "HonoBinding"    as hono
+  }
+
+  component "EndpointController\n<i>framework-agnostic pipeline</i>" as controller
+
+  rectangle "Input" as input {
+    component "InputRegistry"        as inreg
+    component "QueryBracketsAdapter" as qb
+    component "RsqlAdapter"          as rsql
+    component "ODataAdapter"         as odata
+    component "JsonBodyAdapter"      as json
+    component "LegacyAdapter"        as legacy
+  }
+
+  rectangle "Core" as core {
+    component "QueryBuilder"  as builder
+    component "DmmfRegistry\nValueCoercer\nOperatorRegistry" as dmmf
+    component "PlanCache"     as cache
+    component "Executor"      as exec
+  }
+
+  rectangle "Routes" as routes {
+    component "ListRoute"      as list
+    component "CountRoute"     as count
+    component "AggregateRoute" as agg
+    component "GroupByRoute"   as group
+  }
+
+  rectangle "Output" as output {
+    component "OutputRegistry" as outreg
+    component "HalOutput"      as hal
+    component "PlainOutput"    as plain
+    component "JsonApiOutput"  as jsonapi
+    component "CsvOutput"      as csv
+  }
+}
+
+component "Prisma Client" as prisma
+database "Database" as db
+
+client   --> bindings
+bindings --> controller
+controller --> inreg
+inreg --> qb
+inreg --> rsql
+inreg --> odata
+inreg --> json
+inreg --> legacy
+qb    --> builder
+rsql  --> builder
+odata --> builder
+json  --> builder
+builder --> dmmf
+controller --> cache
+controller --> routes
+list  --> exec
+count --> exec
+agg   --> exec
+group --> exec
+exec  --> prisma
+prisma --> db
+list --> outreg
+outreg --> hal
+outreg --> plain
+outreg --> jsonapi
+outreg --> csv
+
+note right of legacy
+  Drives the frozen legacy
+  middleware and captures the
+  Prisma arguments it builds,
+  so behaviour cannot drift.
+end note
+
+note right of cache
+  Caches parsed plans only —
+  the database is always queried.
+end note
+@enduml

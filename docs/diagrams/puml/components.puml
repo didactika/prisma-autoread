@@ -1,0 +1,56 @@
+@startuml components
+' Package structure and the dependency rules it enforces.
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam package {
+  BackgroundColor #F2F2F2
+  BorderColor #666666
+}
+skinparam ArrowColor #333333
+
+package "index.ts\n<i>public surface</i>" as idx {}
+package "auto-read\n<i>AutoReadEndpoint</i>" as autoread {}
+package "config\n<i>OptionsResolver · Keywords · ProviderDetector</i>" as config {}
+package "http\n<i>EndpointController · bindings</i>" as http {}
+package "input\n<i>adapters · parsers</i>" as input {}
+package "core\n<i>QueryBuilder · Executor · dmmf · cache</i>" as core {}
+package "routes\n<i>list · count · aggregate · group-by</i>" as routes {}
+package "output\n<i>hal · plain · jsonapi · csv</i>" as output {}
+package "errors" as errors {}
+package "legacy\n<i>frozen engine</i>" as legacy {}
+package "types\n<i>*.d.ts (declaration only)</i>" as types {}
+
+idx      --> autoread
+autoread --> config
+autoread --> http
+http     --> input
+http     --> routes
+http     --> core
+input    --> core
+input    --> legacy
+routes   --> core
+routes   --> output
+config   --> input
+config   --> output
+config   --> core
+core     --> errors
+input    --> errors
+output   --> errors
+
+types ..> autoread : type-only
+types ..> http     : type-only
+types ..> input    : type-only
+types ..> core     : type-only
+types ..> output   : type-only
+types ..> config   : type-only
+
+note as rules
+  **Rules this shape enforces**
+  • core never imports http, input or output —
+    the query engine is transport-agnostic.
+  • only input/legacy.adapter touches legacy,
+    and only to drive it.
+  • types is a leaf: declaration files, imported
+    with `import type`, erased at build time.
+end note
+@enduml
