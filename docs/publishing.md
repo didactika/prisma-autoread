@@ -1,12 +1,19 @@
 # Publishing
 
-Releases are automated: push a version tag, the whole CI matrix runs, and only if it
-is green does the package reach npm.
+Releases are automated: when a push to `main` passes the whole CI matrix and the
+version in `package.json` has no matching tag, CI creates that tag and starts the
+release workflow. Only a green build reaches npm.
 
 ```bash
-npm version 1.0.1        # bumps package.json and creates the v1.0.1 tag
-git push --follow-tags   # triggers .github/workflows/release.yml
+npm version 1.0.1 --no-git-tag-version
+git add package.json package-lock.json CHANGELOG.md
+git commit -m "chore(release): v1.0.1"
+git push origin main
 ```
+
+Tags can still be pushed manually; `release.yml` continues to accept `v*.*.*` tag
+pushes and manual dispatches. The automatic path runs the test matrix once in
+`ci.yml`; a manually pushed tag runs it from `release.yml` before publishing.
 
 ## How to authenticate — two options
 
@@ -74,7 +81,7 @@ What **does** break CI:
 
 | Check | Why |
 |---|---|
-| Full CI matrix (Node 20/22/24 × Express 4/5 × Prisma 5/6/7) | Nothing ships untested. |
+| Full CI matrix (Node 20/22/24 × Express 4/5 × Prisma 5/6/7), either in the preceding main CI or for a manually pushed tag | Nothing ships untested or runs the matrix twice. |
 | Tag matches `package.json` version | `v1.0.1` must be version `1.0.1`. |
 | Version is valid semver | Catches typos like `1.0` or `v1.0.1`. |
 | `CHANGELOG.md` has an entry for it | Every release is documented. |
@@ -114,7 +121,7 @@ public` flag is required the first time a scoped package is published.
 ## Checklist for a release
 
 - [ ] `CHANGELOG.md` has a section for the new version.
-- [ ] `npm version <major|minor|patch>` (never edit `package.json` by hand).
-- [ ] `git push --follow-tags`.
+- [ ] `npm version <major|minor|patch> --no-git-tag-version` (never edit `package.json` by hand).
+- [ ] Commit the version and changelog, then push to `main`.
 - [ ] Watch the **Release** workflow; approve the `npm` environment if you enabled it.
 - [ ] Verify the package page shows the new version and the provenance badge.
