@@ -157,15 +157,20 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing requires npm >= 11.5.1. Node 22 runners can still ship
+      # an older npm, which signs provenance but cannot exchange GitHub's OIDC token.
+      - name: Install npm with trusted publishing support
+        run: |
+          npm install --global npm@^11.5.1
+          npm --version
+
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
 
-      # Authentication — pick one (see docs/publishing.md):
-      #   A) Trusted publishing (OIDC): configure the repo + workflow as a trusted
-      #      publisher on npm and delete the NODE_AUTH_TOKEN line below. `id-token: write`
-      #      above is all that is needed; no secret is stored anywhere.
-      - name: Publish
+      # Authentication is exclusively OIDC trusted publishing. Do not set
+      # NODE_AUTH_TOKEN: npm obtains a short-lived credential from GitHub.
+      - name: Publish with npm trusted publishing
         if: needs.validate.outputs.should_publish == 'true'
         run: npm publish --access public --provenance
 

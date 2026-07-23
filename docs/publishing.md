@@ -19,65 +19,29 @@ If the reusable CI job is skipped because the main CI already passed, `publish` 
 explicitly enabled after a successful release validation so GitHub does not propagate
 the skipped state.
 
-## How to authenticate — two options
-
-### Option A · Trusted publishing (OIDC) — recommended, no secret
+## Authentication — trusted publishing (OIDC)
 
 npm can trust a specific GitHub repository and workflow directly, so no long-lived
 token exists anywhere. The workflow proves its identity with a short-lived OIDC token
 that GitHub mints per run.
 
-1. On npmjs.com open the package → **Settings → Trusted publishers** (for a brand-new
-   package, publish once manually first, then configure this).
+1. On npmjs.com open `@didactika/prisma-autoread` →
+   **Settings → Trusted publishers**.
 2. Add a **GitHub Actions** publisher:
-   - Organisation / repository: `didactika/prisma-autoread`
+   - Organization or user: `didactika`
+   - Repository: `prisma-autoread`
    - Workflow filename: `release.yml`
-   - Environment: `npm` *(only if you keep the `environment: npm` line in the workflow)*
-3. Remove the `NODE_AUTH_TOKEN` line from the publish step. Nothing else changes —
-   the workflow already requests `permissions: id-token: write`, which is what OIDC needs.
+   - Environment: `npm`
+   - Allowed action: **npm publish**
+3. Do not create an `NPM_TOKEN` secret. The workflow requests `id-token: write` and
+   installs npm 11.5.1 or newer before publishing.
 
 **2FA:** irrelevant here. There is no token to protect, and account 2FA never blocks a
 trusted publish. This is the safest option: nothing to leak, nothing to rotate.
 
-### Option B · Granular access token
-
-1. npmjs.com → your avatar → **Access Tokens** → **Generate New Token** →
-   **Granular Access Token**.
-2. Configure it:
-   | Field | Value |
-   |---|---|
-   | Expiration | 90 days (set a reminder; max is 365) |
-   | Packages and scopes | **Only select packages** → `@didactika/prisma-autoread` |
-   | Permissions | **Read and write** |
-   | Organisations | read-only, or none |
-   | IP allowlist | leave empty (GitHub runners have no stable IPs) |
-3. GitHub → repository → **Settings → Secrets and variables → Actions →
-   New repository secret**:
-
-   > **Name:** `NPM_TOKEN`
-   > **Secret:** the token you just generated
-
-That is the only secret the release workflow needs.
-
-## Does 2FA get in the way?
-
-**No — and you should turn it on.**
-
-| Setting | Where | What to choose |
-|---|---|---|
-| Account 2FA | npm → Account → Two-Factor Authentication | **Authorization and writes** |
-| Package publish requirement | package → Settings → Publishing access | **Two-factor authentication or automation/granular tokens** |
-
-The reason it works: **granular** and **automation** tokens are designed for CI and are
-exempt from the interactive OTP prompt. What 2FA protects is *you* — logging in and
-changing settings from a browser.
-
-What **does** break CI:
-
-- A **classic “Publish” token** — it still asks for a one-time password, which no
-  workflow can answer. Use a granular token (or Option A) instead.
-- Setting the package's publishing access to **“Two-factor authentication only”** — that
-  deliberately forbids tokens. Leave it on the option that also allows tokens.
+Trusted publishing requires Node 22.14 or newer and npm 11.5.1 or newer. The release
+job enforces the npm requirement instead of relying on whichever npm version happens
+to be bundled with the runner.
 
 ## What the workflow validates before publishing
 
