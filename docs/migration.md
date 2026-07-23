@@ -8,12 +8,19 @@ exactly as before. Migrating is opt-in and can be done in two steps.
 ```ts
 import { AutoReadMiddleware, FilterMiddleware } from '@didactika/prisma-autoread';
 
+// Required on Express 5 when using legacy bracket notation.
+app.set('query parser', 'extended');
+
 router.use(FilterMiddleware.processQueryFilters('User'));
 AutoReadMiddleware.applyToRouter(router, { modelName: 'User', findByFilter });
 ```
 
 This path is frozen under `src/legacy/` and covered by its original test suite. It is
 deprecated in favour of `createAutoRead`, but it is not going away in 1.x.
+Express 5 changed its default query parser from extended (`qs`) to simple, so direct
+users of the legacy middleware must opt back into the extended parser. Endpoints
+declared with `createAutoRead` parse the raw query string consistently and do not need
+this application setting.
 
 ## Step 1 — new declaration, same query syntax
 

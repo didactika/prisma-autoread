@@ -51,6 +51,9 @@ async function findEnrolments(
 
 function buildUserApp(config: Partial<AutoReadConfig> = {}) {
     const app = express();
+    // Express 5 defaults to its "simple" query parser, which leaves bracket
+    // notation flat. The frozen legacy middleware expects qs-style objects.
+    app.set('query parser', 'extended');
 
     const router = Router();
     router.use(FilterMiddleware.processQueryFilters('user'));
@@ -71,6 +74,7 @@ function buildUserApp(config: Partial<AutoReadConfig> = {}) {
 
 function buildEnrolmentApp(config: Partial<AutoReadConfig> = {}) {
     const app = express();
+    app.set('query parser', 'extended');
 
     const router = Router();
     router.use(FilterMiddleware.processQueryFilters('userEnrolment'));
