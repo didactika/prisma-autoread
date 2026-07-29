@@ -15,7 +15,7 @@ Each folder is one self-contained `index.ts` with the requests to try at the bot
 | 04 | [rsql-and-odata](./04-rsql-and-odata) | RSQL and OData on the same endpoint. |
 | 05 | [output-formats](./05-output-formats) | HAL, plain, JSON:API, CSV and content negotiation. |
 | 06 | [count-and-aggregations](./06-count-and-aggregations) | `count`, `aggregate`, `group-by` and custom paths. |
-| 07 | [security](./07-security) | Allow-lists, strict deny-by-default and depth limits. |
+| 07 | [security](./07-security) | Allow-lists, hidden fields, strict deny-by-default and depth limits. |
 | 08 | [custom-keywords](./08-custom-keywords) | Renaming reserved parameters that clash with columns. |
 | 09 | [cursor-pagination](./09-cursor-pagination) | Cursor paging for large datasets. |
 | 10 | [cache-and-telemetry](./10-cache-and-telemetry) | Query-plan cache and the `onQuery` hook. |
@@ -23,10 +23,11 @@ Each folder is one self-contained `index.ts` with the requests to try at the bot
 | 12 | [hono](./12-hono) | The Hono binding. |
 | 13 | [legacy-and-migration](./13-legacy-and-migration) | Old syntax and new engine side by side. |
 | 14 | [full-api](./14-full-api) | Several resources, every feature, production-shaped. |
+| 15 | [mongodb-embedded](./15-mongodb-embedded) | Filtering inside MongoDB composite `type` blocks. |
 
 ## Shared schema
 
-Every example assumes this Prisma schema:
+Every example assumes this Prisma schema (example 15 brings its own, MongoDB one):
 
 ```prisma
 model User {

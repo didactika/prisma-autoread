@@ -2,7 +2,8 @@ import { BadRequest } from '../errors';
 import { DmmfRegistry, ModelMeta } from './dmmf/registry';
 import { ValueCoercer } from './dmmf/coercer';
 import { OperatorRegistry } from './operators';
-import type { FieldMeta, RelationMeta } from '../types/dmmf';
+import { FieldMask } from './mask';
+import type { FieldMeta, RelationMeta, CompositeMeta } from '../types/dmmf';
 import type {
     RawSpec,
     QuerySpec,
@@ -10,6 +11,7 @@ import type {
     SortDir,
     ResolvedSecurity,
     JsonPathSyntax,
+    MaskNode,
 } from '../types/query';
 
 /** Nesting cap when no `security.maxDepth` is configured. */
@@ -19,6 +21,8 @@ const DEFAULT_MAX_DEPTH = 12;
 interface BuildScope {
     security: ResolvedSecurity;
     jsonPathSyntax: JsonPathSyntax;
+    /** Mask that applies at the current nesting level (`security.hidden`). */
+    mask?: MaskNode;
 }
 
 /**
@@ -32,17 +36,21 @@ interface BuildScope {
  */
 export class QueryBuilder {
     static build(raw: RawSpec, model: ModelMeta, ctx: BuildContext): QuerySpec {
+        const security = ctx.security ?? { fields: '*', relations: '*', maxDepth: DEFAULT_MAX_DEPTH };
         const scope: BuildScope = {
-            security: ctx.security ?? { fields: '*', relations: '*', maxDepth: DEFAULT_MAX_DEPTH },
+            security,
             jsonPathSyntax: ctx.jsonPathSyntax ?? 'array',
+            mask: security.hidden,
         };
         const spec: QuerySpec = {};
 
         let where = raw.where ? QueryBuilder.buildWhere(raw.where, model, scope, 0) : undefined;
 
         // `search` convenience → OR (contains) across configured fields.
-        if (raw.search && ctx.searchable.length > 0) {
-            const or = ctx.searchable.map(field => ({ [field]: { contains: raw.search } }));
+        // Hidden fields drop out: they must not be probed, not even indirectly.
+        const searchable = FieldMask.visible(ctx.searchable, scope.mask);
+        if (raw.search && searchable.length > 0) {
+            const or = searchable.map(field => ({ [field]: { contains: raw.search } }));
             where = where ? { AND: [where, { OR: or }] } : { OR: or };
         }
         if (where) spec.where = where;
@@ -58,8 +66,13 @@ export class QueryBuilder {
         }
 
         // Prisma forbids `select` and `include` together → select wins.
-        if (raw.select) spec.select = QueryBuilder.buildSelect(raw.select, model, scope);
-        else if (raw.include) spec.include = QueryBuilder.buildInclude(raw.include, model, scope, 0);
+        if (raw.select) {
+            spec.select = QueryBuilder.buildSelect(raw.select, model, scope);
+        } else if (raw.include) {
+            const include = QueryBuilder.buildInclude(raw.include, model, scope, 0);
+            // Everything asked for may have been a composite (always returned anyway).
+            if (Object.keys(include).length > 0) spec.include = include;
+        }
 
         QueryBuilder.applyPagination(raw, spec, ctx, grouping);
 
@@ -105,6 +118,9 @@ export class QueryBuilder {
                 continue;
             }
 
+            // A hidden name is treated as if it did not exist at all.
+            if (FieldMask.hides(scope.mask, key)) throw QueryBuilder.unknown(key, model, scope);
+
             const relation = model.relation(key);
             if (relation) {
                 QueryBuilder.assertRelationAllowed(relation, scope.security);
@@ -112,7 +128,14 @@ export class QueryBuilder {
                 continue;
             }
 
-            const field = QueryBuilder.resolveField(model, key, scope.security);
+            const composite = model.composite(key);
+            if (composite) {
+                QueryBuilder.assertFieldAllowed(composite.name, scope.security);
+                out[composite.name] = QueryBuilder.buildComposite(value, composite, scope, depth + 1);
+                continue;
+            }
+
+            const field = QueryBuilder.resolveField(model, key, scope);
             out[field.name] = field.type === 'Json'
                 ? QueryBuilder.buildJson(value, scope.jsonPathSyntax)
                 : QueryBuilder.buildFieldCondition(value, field.type);
@@ -132,6 +155,7 @@ export class QueryBuilder {
         }
 
         const related = DmmfRegistry.model(relation.target);
+        const inner = QueryBuilder.descend(scope, relation.name);
         const keys = Object.keys(value);
 
         if (keys.some(key => OperatorRegistry.isRelation(key))) {
@@ -140,14 +164,79 @@ export class QueryBuilder {
                 if (!OperatorRegistry.isRelation(key)) {
                     throw new BadRequest({ msg: `Invalid relation operator '${key}' on '${relation.name}'` });
                 }
-                result[key] = QueryBuilder.buildWhere(sub, related, scope, depth + 1);
+                result[key] = QueryBuilder.buildWhere(sub, related, inner, depth + 1);
             }
             return result;
         }
 
         // Bare nested filter: wrap to-many in `some`, keep to-one direct.
-        const inner = QueryBuilder.buildWhere(value, related, scope, depth + 1);
-        return relation.isList ? { some: inner } : inner;
+        const filter = QueryBuilder.buildWhere(value, related, inner, depth + 1);
+        return relation.isList ? { some: filter } : filter;
+    }
+
+    /**
+     * Build the filter for an embedded MongoDB composite type.
+     *
+     * Prisma does not accept a bare nested object here — that shape means *whole
+     * document equality* — so a plain filter is wrapped in `is` (single document)
+     * or `some` (list), which is what `?filter[program][shortname]=X` means.
+     *
+     * @example
+     * // filter[program][shortname]=MAT → { program: { is: { shortname: 'MAT' } } }
+     * // filter[program][subjects][type]=lab
+     * //   → { program: { is: { subjects: { some: { type: 'lab' } } } } }
+     */
+    private static buildComposite(
+        value: any,
+        composite: CompositeMeta,
+        scope: BuildScope,
+        depth: number,
+    ): Record<string, any> {
+        if (depth > scope.security.maxDepth) throw new BadRequest({ msg: 'Filter nesting too deep' });
+
+        // `program=null` on an optional embedded document.
+        if (value === null) return { is: null };
+        if (typeof value !== 'object' || Array.isArray(value)) {
+            throw new BadRequest({
+                msg: `Composite field '${composite.name}' expects a nested filter object`,
+            });
+        }
+
+        const target = DmmfRegistry.composite(composite.target);
+        const inner = QueryBuilder.descend(scope, composite.name);
+        const keys = Object.keys(value);
+
+        if (keys.some(key => OperatorRegistry.isComposite(key, composite.isList))) {
+            const result: Record<string, any> = {};
+            for (const [key, sub] of Object.entries(value)) {
+                const op = OperatorRegistry.composite(key, composite.isList);
+                if (!op) {
+                    throw new BadRequest({
+                        msg: `Invalid operator '${key}' on composite field '${composite.name}'. Available: ${OperatorRegistry.compositeNames(composite.isList).join(', ')}`,
+                    });
+                }
+                if (OperatorRegistry.COMPOSITE_FLAG_OPS.has(op)) {
+                    result[op] = sub === true || sub === 'true' || sub === 1 || sub === '1';
+                } else if (op === 'equals') {
+                    // Whole-document equality: Prisma matches the value verbatim.
+                    result.equals = sub;
+                } else if (sub === null) {
+                    result[op] = null;
+                } else {
+                    result[op] = QueryBuilder.buildWhere(sub, target, inner, depth + 1);
+                }
+            }
+            return result;
+        }
+
+        const filter = QueryBuilder.buildWhere(value, target, inner, depth + 1);
+        return composite.isList ? { some: filter } : { is: filter };
+    }
+
+    /** Same scope, moved one level down the `hidden` mask tree. */
+    private static descend(scope: BuildScope, name: string): BuildScope {
+        const mask = FieldMask.child(scope.mask, name);
+        return mask === scope.mask ? scope : { ...scope, mask };
     }
 
     private static buildFieldCondition(value: any, type: string): any {
@@ -213,7 +302,7 @@ export class QueryBuilder {
     ): Array<Record<string, SortDir>> {
         return orderBy.map(entry => {
             const [field, dir] = Object.entries(entry)[0];
-            const resolved = QueryBuilder.resolveField(model, field, scope.security, 'sort by');
+            const resolved = QueryBuilder.resolveField(model, field, scope, 'sort by');
             return { [resolved.name]: dir === 'desc' ? 'desc' : 'asc' } as Record<string, SortDir>;
         });
     }
@@ -225,7 +314,14 @@ export class QueryBuilder {
     ): Record<string, any> {
         const out: Record<string, any> = {};
         for (const key of Object.keys(fields)) {
-            out[QueryBuilder.resolveField(model, key, scope.security, 'select').name] = true;
+            // An embedded composite document can be projected as a whole.
+            const composite = !FieldMask.hides(scope.mask, key) && model.composite(key);
+            if (composite) {
+                QueryBuilder.assertFieldAllowed(composite.name, scope.security, 'select');
+                out[composite.name] = true;
+                continue;
+            }
+            out[QueryBuilder.resolveField(model, key, scope, 'select').name] = true;
         }
         return out;
     }
@@ -239,6 +335,14 @@ export class QueryBuilder {
         if (depth > scope.security.maxDepth) throw new BadRequest({ msg: 'Include nesting too deep' });
         const out: Record<string, any> = {};
         for (const [key, value] of Object.entries(include)) {
+            if (FieldMask.hides(scope.mask, key)) {
+                throw new BadRequest({ msg: `Cannot include unknown relation '${key}' on ${model.name}` });
+            }
+
+            // Embedded composite documents always come back with the row; Prisma
+            // rejects them inside `include`, so asking for one is a no-op.
+            if (model.composite(key)) continue;
+
             const relation = model.relation(key);
             if (!relation) {
                 throw new BadRequest({ msg: `Cannot include unknown relation '${key}' on ${model.name}` });
@@ -246,7 +350,8 @@ export class QueryBuilder {
             QueryBuilder.assertRelationAllowed(relation, scope.security);
             if (value && typeof value === 'object' && !Array.isArray(value)) {
                 const related = DmmfRegistry.model(relation.target);
-                out[relation.name] = { include: QueryBuilder.buildInclude(value, related, scope, depth + 1) };
+                const inner = QueryBuilder.descend(scope, relation.name);
+                out[relation.name] = { include: QueryBuilder.buildInclude(value, related, inner, depth + 1) };
             } else {
                 out[relation.name] = true;
             }
@@ -314,7 +419,7 @@ export class QueryBuilder {
         verb: string,
     ): string[] {
         return QueryBuilder.toList(value).map(
-            name => QueryBuilder.resolveField(model, name, scope.security, verb).name,
+            name => QueryBuilder.resolveField(model, name, scope, verb).name,
         );
     }
 
@@ -325,7 +430,7 @@ export class QueryBuilder {
     ): Record<string, true> {
         const out: Record<string, true> = {};
         for (const name of QueryBuilder.toList(value)) {
-            out[QueryBuilder.resolveField(model, name, scope.security, 'aggregate').name] = true;
+            out[QueryBuilder.resolveField(model, name, scope, 'aggregate').name] = true;
         }
         return out;
     }
@@ -341,24 +446,45 @@ export class QueryBuilder {
     private static resolveField(
         model: ModelMeta,
         name: string,
-        security: ResolvedSecurity,
+        scope: BuildScope,
         verb = 'filter by',
     ): FieldMeta {
-        const field = model.field(name);
-        if (!field) {
-            throw new BadRequest({
-                msg: `Unknown field '${name}' on ${model.name}. Available fields: ${model.fieldNames().join(', ')}. Relations: ${model.relationNames().join(', ')}`,
-            });
-        }
-        if (security.fields !== '*' && !security.fields.has(field.name.toLowerCase())) {
-            throw new BadRequest({ msg: `Cannot ${verb} field '${field.name}' (not allowed)` });
-        }
+        const field = FieldMask.hides(scope.mask, name) ? undefined : model.field(name);
+        if (!field) throw QueryBuilder.unknown(name, model, scope);
+
+        QueryBuilder.assertFieldAllowed(field.name, scope.security, verb);
         return field;
+    }
+
+    private static assertFieldAllowed(
+        name: string,
+        security: ResolvedSecurity,
+        verb = 'filter by',
+    ): void {
+        if (security.fields !== '*' && !security.fields.has(name.toLowerCase())) {
+            throw new BadRequest({ msg: `Cannot ${verb} field '${name}' (not allowed)` });
+        }
     }
 
     private static assertRelationAllowed(relation: RelationMeta, security: ResolvedSecurity): void {
         if (security.relations !== '*' && !security.relations.has(relation.name.toLowerCase())) {
             throw new BadRequest({ msg: `Cannot traverse relation '${relation.name}' (not allowed)` });
         }
+    }
+
+    /**
+     * The 400 raised for a name the client may not use. Hidden names are reported
+     * exactly like names that do not exist, and never appear in the hint, so the
+     * response cannot be used to probe for their existence.
+     */
+    private static unknown(name: string, model: ModelMeta, scope: BuildScope): BadRequest {
+        const fields = FieldMask.visible(
+            [...model.fieldNames(), ...model.compositeNames()],
+            scope.mask,
+        );
+        const relations = FieldMask.visible(model.relationNames(), scope.mask);
+        return new BadRequest({
+            msg: `Unknown field '${name}' on ${model.name}. Available fields: ${fields.join(', ')}. Relations: ${relations.join(', ')}`,
+        });
     }
 }

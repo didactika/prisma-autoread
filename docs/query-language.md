@@ -54,6 +54,61 @@ GET /orders?filter[customer][email][contains]=@corp
 
 Supported relation operators: `some`, `every`, `none`, `is`, `isNot`.
 
+## Embedded documents (MongoDB composite types)
+
+A `type` block in a MongoDB schema is not a model — it is an embedded document — and
+Prisma filters it with its own operator set. Those fields are addressed exactly like
+relations, and the right wrapper is inserted for you:
+
+```prisma
+model CourseSchedule {
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  uuid    String  @unique
+  program Program
+}
+
+type Program { shortname String  name String  subjects Subject[] }
+type Subject { shortname String  type String  activities Activity[] }
+```
+
+```
+# single embedded document → wrapped in `is`
+GET /course-schedules?filter[program][shortname]=MAT
+→ { program: { is: { shortname: 'MAT' } } }
+
+# embedded list → wrapped in `some`
+GET /course-schedules?filter[program][subjects][type]=lab
+→ { program: { is: { subjects: { some: { type: 'lab' } } } } }
+
+# nesting keeps going, operators and type coercion included
+GET /course-schedules?filter[program][subjects][startDate][gte]=2026-01-01
+GET /course-schedules?filter[program][subjects][activities][codeSuffix]=A1
+```
+
+Write the wrapper yourself when you need a different one:
+
+```
+GET /course-schedules?filter[program][isNot][shortname]=MAT
+GET /course-schedules?filter[program][is][subjects][every][type]=lab
+```
+
+| Shape | Operators |
+|---|---|
+| single document | `is`, `isNot`, `equals`, `isSet` |
+| list of documents | `some`, `every`, `none`, `equals`, `isEmpty`, `isSet` |
+
+Every field inside an embedded document is validated against the composite type and
+coerced to its declared type, just like a column on the model.
+
+Two more rules follow from how Prisma models embedded data:
+
+- **`fields=program`** projects the whole document (`select: { program: true }`).
+- **`include=program`** is a no-op. Embedded documents always come back with the row,
+  and Prisma rejects them inside `include`; `include=*` skips them for the same reason.
+
+The old GET syntax understands the same paths (`?program[shortname]=MAT`,
+`?program[shortname][STARTS_WITH]=MA`) and inserts the same wrappers.
+
 ## JSON columns
 
 Prisma-native JSON filters, with the `path` normalised to your datasource:

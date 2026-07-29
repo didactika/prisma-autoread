@@ -17,7 +17,7 @@
 | `formats` | | all | GET dialects when `legacy: false`: `query`, `rsql`, `odata`. |
 | `searchable` | | `[]` | Fields scanned by the search keyword. |
 | `defaults` | | see below | Pagination and sorting defaults. |
-| `security` | | allow all | Allow-lists and limits — see [Security](./security.md). |
+| `security` | | allow all | `{ fields, relations, hidden, maxDepth, strict }` — see [Security](./security.md). |
 | `keywords` | | defaults | Rename reserved parameters — see [Keywords](./keywords.md). |
 | `provider` | | auto | Datasource provider, for JSON path syntax. |
 | `jsonPathSyntax` | | auto | Force `'array'` or `'string'`, bypassing detection. |
@@ -34,6 +34,21 @@ defaults: { limit: 10, maxLimit: 100, sort: 'id', order: 'asc' }
 `limit` is the page size when the client omits it; `maxLimit` caps whatever the client
 asks for. `sort`/`order` are used when no sort is requested (silently dropped if the
 model has no such field).
+
+### `security`
+
+```ts
+security: {
+    fields: ['id', 'firstName', 'email'],   // filterable / sortable / selectable
+    relations: ['posts'],                    // traversable / includable
+    hidden: ['password', 'posts.draftNotes'],// never queryable and never returned
+    maxDepth: 5,
+    strict: true,                            // deny by default; fails at startup if unset
+}
+```
+
+`fields` and `relations` gate what a client may *ask for*; `hidden` also strips the
+field from every response. Full rules in [Security](./security.md).
 
 ## Data source
 

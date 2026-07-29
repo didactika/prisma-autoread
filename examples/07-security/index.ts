@@ -1,8 +1,8 @@
 /**
- * 07 · Security: allow-lists, strict mode and depth limits
+ * 07 · Security: allow-lists, hidden fields, strict mode and depth limits
  *
- * Checks live in the query builder, so they apply to every protocol — brackets,
- * RSQL, OData and JSON bodies alike.
+ * Checks apply to every protocol — brackets, RSQL, OData, JSON bodies and the
+ * legacy GET syntax alike.
  */
 import express, { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
@@ -23,6 +23,9 @@ createAutoRead({
         strict: true,
         fields: ['id', 'firstName', 'lastName', 'role', 'active', 'createdAt'],
         relations: ['posts'],
+        // `fields` only limits what can be *asked for* — Prisma still returns every
+        // column. `hidden` is what keeps a value out of the response body.
+        hidden: ['password', 'resetToken', 'posts.draftNotes'],
         maxDepth: 4,
     },
 }).applyTo(publicUsers);
@@ -50,12 +53,19 @@ app.listen(3000);
    GET /public/users?filter[posts][some][published]=true → 200 (posts is listed)
    GET /public/users?filter[a][b][c][d][e]=1   → 400  (deeper than maxDepth)
 
+   Hidden fields behave as if they did not exist, and never reach the client:
+   GET /public/users                           → 200, no `password` key in any row
+   GET /public/users?include=posts             → 200, no `draftNotes` in any post
+   GET /public/users?filter[password]=x        → 400  "Unknown field 'password'"
+   GET /public/users?sort=password             → 400  (same message)
+   The error never confirms the column exists, so it cannot be used to probe.
+
    These throw at startup, not per request — a misconfigured endpoint never ships:
      security: { strict: true }                       → no field allow-list
      security: { strict: true, fields: '*' }          → wildcard rejected
      security: { strict: true, fields: ['id'], relations: '*' } → wildcard rejected
 
-   Keep out of the allow-list anything you never want filtered or selected:
-   password hashes, tokens, internal flags.
+   Rule of thumb: `fields` for what clients may query, `hidden` for what must never
+   leave the server (password hashes, tokens, internal flags).
    Authentication and rate limiting belong in front of this — they are not its job.
 */

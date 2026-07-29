@@ -86,10 +86,15 @@ export default class FilterValidator {
     }
 
     /**
-     * Get the DMMF model and relation metadata for a given relation field.
+     * Get the DMMF metadata for a given object field.
+     *
+     * The target may be a model (a real relation) or a MongoDB composite type
+     * (`type X { … }`), which lives in `datamodel.types` rather than
+     * `datamodel.models` — both are resolved so nested filtering works either way.
+     *
      * @param relationName - Exact (correctly-cased) relation field name
      * @param modelInfo - DMMF model object containing the relation
-     * @returns `{ model, isList }` or `null` if the relation is not found
+     * @returns `{ model, isList, isComposite }` or `null` if the field is not found
      */
     static getRelationModelInfo(relationName: string, modelInfo?: any): any {
         if (!modelInfo?.fields) return null;
@@ -103,9 +108,19 @@ export default class FilterValidator {
         const relatedModel =
             Prisma.dmmf.datamodel.models.find(m => m.name === relationField.type) ?? null;
 
+        if (relatedModel) {
+            return { model: relatedModel, isList: relationField.isList || false, isComposite: false };
+        }
+
+        const composite =
+            ((Prisma as any)?.dmmf?.datamodel?.types ?? []).find(
+                (t: any) => t.name === relationField.type
+            ) ?? null;
+
         return {
-            model: relatedModel,
-            isList: relationField.isList || false
+            model: composite,
+            isList: relationField.isList || false,
+            isComposite: !!composite
         };
     }
 

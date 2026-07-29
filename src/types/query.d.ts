@@ -78,12 +78,25 @@ export interface EngineDefaults {
     order: SortDir;
 }
 
+/**
+ * One level of the compiled `security.hidden` tree: the names hidden here, plus
+ * the sub-trees that apply inside a relation or composite field.
+ */
+export interface MaskNode {
+    /** Lower-cased names hidden at this level. */
+    fields: Set<string>;
+    /** Lower-cased relation/composite name → mask that applies inside it. */
+    children: Map<string, MaskNode>;
+}
+
 /** Normalised access control applied while building the query. */
 export interface ResolvedSecurity {
     /** `'*'` = any field; otherwise a set of allowed field names (lower-cased). */
     fields: '*' | Set<string>;
     /** `'*'` = any relation; otherwise a set of allowed relation names (lower-cased). */
     relations: '*' | Set<string>;
+    /** Compiled allow-nothing mask: fields never queryable **and** never returned. */
+    hidden?: MaskNode;
     /** Maximum filter/include nesting depth. */
     maxDepth: number;
 }

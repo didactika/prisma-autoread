@@ -58,6 +58,7 @@ export class EndpointController {
             limit: take,
             baseUrl: request.baseUrl + request.path,
             query: input.query,
+            hidden: this.options.security.hidden,
         });
 
         this.options.onQuery?.({

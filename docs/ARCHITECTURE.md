@@ -75,6 +75,8 @@ self-contained class plus one registration.
 | `DmmfRegistry` / `ModelMeta` | Cached, O(1) view of the Prisma schema. | `src/core/dmmf/` |
 | `ValueCoercer` | Type coercion driven by the Prisma column type. | `src/core/dmmf/` |
 | `OperatorRegistry` | Operator vocabulary and its mapping to Prisma. | `src/core/` |
+| `FieldMask` | Compiles `security.hidden`; rejects and redacts hidden fields. | `src/core/` |
+| `SpecGuard` | Applies the security policy to plans built outside the builder. | `src/core/` |
 | `Executor` | Runs `findMany` / `count` / `aggregate` / `groupBy`. | `src/core/` |
 | `PlanCache` | LRU cache of parsed query plans. | `src/core/` |
 | `Route` (+ `RouteRegistry`) | One operation: list, count, aggregate, group-by. | `src/routes/` |
@@ -172,10 +174,16 @@ Every path is configurable per endpoint.
 
 ## 9. Security
 
-Two layers, both enforced inside `QueryBuilder` so every input format is covered:
+Enforced inside `QueryBuilder`, so every modern input format is covered, plus a
+`SpecGuard` pass over the plan the frozen legacy engine builds, so the policy holds
+on that dialect too:
 
 - **Allow-lists** — `security.fields` and `security.relations` restrict what can be
   filtered, sorted, selected, aggregated or traversed.
+- **Hidden fields** — `security.hidden` compiles to a `FieldMask` tree used twice:
+  the builder rejects those names as unknown, and `ListRoute` strips them from every
+  row after execution, so the value cannot leak through a `select`, an `include` or
+  an embedded document.
 - **Strict mode** — `security.strict` refuses to start without an explicit field
   allow-list and rejects a relations wildcard: nothing is exposed unless listed.
 - **Depth guard** — `security.maxDepth` rejects pathological nesting.

@@ -29,6 +29,17 @@ export interface SecurityOptions {
     fields?: '*' | string[];
     /** Allowed relations to traverse/include (`'*'` = all). */
     relations?: '*' | string[];
+    /**
+     * Fields that must never leave the server. Unlike `fields`, which only limits
+     * what a client may *ask for*, a hidden field is stripped from every response —
+     * including rows fetched through `include`, wildcards or embedded documents —
+     * and is rejected (as if it did not exist) in filters, sorts, `fields`,
+     * `distinct`, aggregations and `group-by`.
+     *
+     * Dotted paths reach into relations and MongoDB composite types, and matching
+     * is case-insensitive: `['password', 'enrolments.token', 'program.uuid']`.
+     */
+    hidden?: string[];
     /** Maximum filter/include nesting depth (default 12). */
     maxDepth?: number;
 }

@@ -12,6 +12,8 @@ export { ProviderDetector } from './config/provider';
 export { QueryBuilder } from './core/query-builder';
 export { Executor } from './core/executor';
 export { OperatorRegistry } from './core/operators';
+export { FieldMask } from './core/mask';
+export { SpecGuard } from './core/spec-guard';
 export { PlanCache } from './core/cache';
 export { DmmfRegistry, ModelMeta } from './core/dmmf/registry';
 export { ValueCoercer } from './core/dmmf/coercer';
@@ -67,6 +69,7 @@ export type {
     AggregationSpec,
     SortDir,
     JsonPathSyntax,
+    MaskNode,
 } from './types/query';
 export type {
     AutoReadOptions,
@@ -79,7 +82,7 @@ export type {
     QueryTelemetry,
 } from './types/options';
 export type { InputAdapter, AdapterContext, OutputAdapter, OutputContext } from './types/adapters';
-export type { FieldMeta, RelationMeta, ModelMetadata } from './types/dmmf';
+export type { FieldMeta, RelationMeta, CompositeMeta, ModelMetadata } from './types/dmmf';
 export type { KeywordMap, KeywordOverrides } from './types/keywords';
 export type { PrismaDelegate, FindByFilter, ExecutorSource, DatasourceProvider } from './types/prisma';
 export type {
@@ -102,6 +105,7 @@ export { default as IncludeParser } from './legacy/utils/include-parser.util';
 export { default as NestedRelationProcessor } from './legacy/utils/nested-relation-processor.util';
 export { default as JsonFilterProcessor } from './legacy/utils/json-filter-processor.util';
 export { default as ConditionParser } from './legacy/utils/condition-parser.util';
+export { default as CompositeWhereNormalizer } from './legacy/utils/composite-where.util';
 
 export type {
     AutoReadConfig,

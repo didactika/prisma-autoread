@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { BadRequest } from 'http-response-client/lib/errors/client';
 import { Prisma } from '@prisma/client';
 import PaginationMiddleware from './pagination.middleware';
+import CompositeWhereNormalizer from './utils/composite-where.util';
 import { AutoReadConfig, PaginationData, RequestFilterable, JsonFilter, FilterGroup } from '../types';
 
 /**
@@ -82,10 +83,16 @@ export default class AutoReadMiddleware {
         let currentModelName = rootModelName;
 
         for (let i = 0; i < parts.length; i++) {
-            const model = Prisma.dmmf.datamodel.models.find(m => m.name === currentModelName);
+            // The path may cross into a MongoDB composite type, which is declared
+            // under `datamodel.types` and carries the same `fields` shape.
+            const model =
+                Prisma.dmmf.datamodel.models.find(m => m.name === currentModelName) ??
+                ((Prisma as any)?.dmmf?.datamodel?.types ?? []).find(
+                    (t: any) => t.name === currentModelName
+                );
             if (!model) return undefined;
 
-            const field = model.fields.find(f => f.name === parts[i]);
+            const field = model.fields.find((f: any) => f.name === parts[i]);
             if (!field) return undefined;
 
             if (i === parts.length - 1) {
@@ -182,23 +189,47 @@ export default class AutoReadMiddleware {
 
     // ── Include builder ────────────────────────────────────────────────────────
 
+    /** Names of the composite types declared in the schema (MongoDB only). */
+    private static getCompositeTypeNames(): Set<string> {
+        const types = (Prisma as any)?.dmmf?.datamodel?.types ?? [];
+        return new Set<string>(types.map((t: any) => t.name));
+    }
+
+    /**
+     * Whether `name` is an embedded composite field on `modelName`. Prisma always
+     * returns those with the row and rejects them inside `include`.
+     */
+    private static isCompositeField(modelName: string, name: string): boolean {
+        const composites = this.getCompositeTypeNames();
+        if (composites.size === 0) return false;
+
+        const model = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+        const field = model?.fields.find(f => f.name.toLowerCase() === name.toLowerCase());
+        return !!field && field.kind === 'object' && composites.has(field.type);
+    }
+
     /**
      * Convert the parsed `relationsToInclude` structure into a Prisma `include` object.
      *
      * - `'*'` → all relation fields from DMMF (each set to `true`)
      * - `Array<{ rel: true | nested }>` → merged into a single flat object,
      *   with nested arrays converted to `{ include: { ... } }`
+     *
+     * Embedded composite fields are skipped: they come back with the row anyway,
+     * and Prisma errors if they appear in `include`.
      */
     private static buildPrismaInclude(
         relationsToInclude: Array<{ [relation: string]: any }> | '*',
         modelName: string
     ): Record<string, any> | undefined {
+        const composites = this.getCompositeTypeNames();
+
         if (relationsToInclude === '*') {
             const model = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
             if (!model) return undefined;
             const result: Record<string, any> = {};
             for (const field of model.fields) {
-                if (field.kind === 'object') result[field.name] = true;
+                if (field.kind === 'object' && !composites.has(field.type)) result[field.name] = true;
             }
             return Object.keys(result).length > 0 ? result : undefined;
         }
@@ -210,6 +241,8 @@ export default class AutoReadMiddleware {
         const result: Record<string, any> = {};
         for (const item of relationsToInclude) {
             for (const [rel, value] of Object.entries(item)) {
+                if (composites.size > 0 && this.isCompositeField(modelName, rel)) continue;
+
                 if (value === true || value === '*') {
                     result[rel] = true;
                 } else if (Array.isArray(value)) {
@@ -439,7 +472,10 @@ export default class AutoReadMiddleware {
                 );
 
                 // ── Call consumer's findByFilter ───────────────────────────────────
-                const result = await findByFilter({ where, include, orderBy, take, skip });
+                // MongoDB embedded documents need `is`/`some` around their filters.
+                const finalWhere = CompositeWhereNormalizer.normalize(where, modelName);
+
+                const result = await findByFilter({ where: finalWhere, include, orderBy, take, skip });
 
                 let data: any[];
                 let totalCount: number;

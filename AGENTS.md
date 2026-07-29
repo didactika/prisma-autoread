@@ -15,6 +15,11 @@ query.
 
 1. **Never modify `src/legacy/`.** It is the original engine, frozen for backward
    compatibility, and it is reused verbatim by the `legacy` input adapter.
+   The one admitted exception is a **bug that only manifests on a datasource the 0.x
+   engine never supported** — MongoDB composite types, in 1.1.0. Such a fix must be
+   inert on every schema that worked before (guard on `Prisma.dmmf.datamodel.types`
+   being non-empty) and must leave the existing legacy suites untouched and green.
+   Anything else — new syntax, new options, refactors — belongs outside `legacy/`.
 2. **Types live in `src/types/*.d.ts`.** Implementation files contain behaviour only and
    import types with `import type`.
 3. **The code is object-oriented.** New behaviour goes in a class with a single
@@ -39,7 +44,7 @@ result. That is the invariant to preserve.
 src/
 ├── auto-read.ts      AutoReadEndpoint + createAutoRead
 ├── config/           OptionsResolver · Keywords · ProviderDetector
-├── core/             QueryBuilder · Executor · OperatorRegistry · PlanCache · dmmf/
+├── core/             QueryBuilder · Executor · OperatorRegistry · FieldMask · SpecGuard · PlanCache · dmmf/
 ├── input/            adapters (query, rsql, odata, json, legacy) + parsers/
 ├── output/           adapters (hal, plain, jsonapi, csv) + Serializer · LinkBuilder
 ├── routes/           list · count · aggregate · group-by + RouteRegistry

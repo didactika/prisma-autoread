@@ -19,12 +19,32 @@ export interface RelationMeta {
     isList: boolean;
 }
 
-/** Read-only metadata view of a Prisma model with O(1) lookups. */
+/**
+ * An embedded MongoDB composite type field (`type Program { … }` in the schema).
+ *
+ * Composite fields look like relations in the DMMF (`kind: 'object'`) but their
+ * target lives in `datamodel.types`, not `datamodel.models`, and Prisma filters
+ * them with `is`/`isNot`/`some`/`every`/`none` instead of relation operators.
+ */
+export interface CompositeMeta {
+    /** Correctly-cased field name. */
+    name: string;
+    /** Composite type name (a member of `Prisma.dmmf.datamodel.types`). */
+    target: string;
+    /** Whether the field holds a list of embedded documents. */
+    isList: boolean;
+}
+
+/** Read-only metadata view of a Prisma model (or composite type) with O(1) lookups. */
 export interface ModelMetadata {
     readonly name: string;
+    /** True when this metadata describes a composite type rather than a model. */
+    readonly isComposite: boolean;
     field(name: string): FieldMeta | undefined;
     relation(name: string): RelationMeta | undefined;
+    composite(name: string): CompositeMeta | undefined;
     isJson(name: string): boolean;
     fieldNames(): string[];
     relationNames(): string[];
+    compositeNames(): string[];
 }

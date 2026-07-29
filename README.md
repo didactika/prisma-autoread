@@ -68,10 +68,13 @@ QUERY /users     { "where": { "age": { "gte": 30 } }, "orderBy": [{ "createdAt":
 - 🌐 **GET, QUERY & POST** — including the new safe/idempotent [`QUERY`](https://www.ietf.org/archive/id/draft-ietf-httpbis-safe-method-w-body-02.html) method (body-based search).
 - 🧮 **Full grammar** — `eq/ne/gt/gte/lt/lte/in/notIn/contains/startsWith/endsWith/mode/isNull`,
   `AND`/`OR`/`NOT`, relation `some/every/none/is/isNot`, and JSON path filters.
+- 🍃 **MongoDB embedded documents** — filter inside composite `type` blocks at any
+  depth; `is`/`some` wrappers are inserted for you.
 - 📊 **Aggregations** — `count`, `aggregate` (`sum`/`avg`/`min`/`max`) and `group-by`.
 - 📄 **Pagination** — offset (`page`/`limit`) and **cursor** (`cursor=`), with links.
 - 🎨 **Output formats** — HAL (default), plain, JSON:API and CSV, with content negotiation.
-- 🛡️ **Security** — field/relation allow-lists, **strict deny-by-default mode**, nesting guard.
+- 🛡️ **Security** — field/relation allow-lists, **hidden fields that never reach the
+  response**, **strict deny-by-default mode**, nesting guard.
 - 🔤 **Renameable keywords** — a column called `fields` or `sort`? Rename the control parameter.
 - 🧩 **Framework-agnostic** — Express, **Fastify** and **Hono** bindings (neither is a dependency).
 - 🚀 **Fast** — O(1) schema lookups, single-pass parsing, optional query-plan cache, telemetry.
@@ -228,6 +231,12 @@ GET /users?filter[or][0][active]=true&filter[or][1][age][lt]=18
 GET /users?filter[posts][some][title][startsWith]=Hello
 GET /orders?filter[customer][email][contains]=@corp
 
+# MongoDB embedded documents (composite `type` blocks), wrapped in `is` / `some`
+GET /course-schedules?filter[program][shortname]=MAT
+→ { program: { is: { shortname: 'MAT' } } }
+GET /course-schedules?filter[program][subjects][type]=lab
+→ { program: { is: { subjects: { some: { type: 'lab' } } } } }
+
 # JSON columns (Prisma-native path filter)
 GET /users?filter[metadata][path][0]=theme&filter[metadata][equals]=dark
 ```
@@ -336,7 +345,7 @@ createAutoRead(options): { applyTo(router): Router }
 | `formats` | | all | GET dialects when `legacy: false` (`query`/`rsql`/`odata`). |
 | `searchable` | | `[]` | Fields scanned by `?search=`. |
 | `defaults` | | `{limit:10,maxLimit:100,sort:'id',order:'asc'}` | Pagination/sort defaults. |
-| `security` | | allow all | `{ fields, relations, maxDepth }`. |
+| `security` | | allow all | `{ fields, relations, hidden, maxDepth }`. |
 | `keywords` | | defaults | Rename reserved query params (see below). |
 | `provider` / `jsonPathSyntax` | | auto | JSON `path` syntax; auto-detected from the datasource. |
 | `cache` | | off | `true` or `{ max }` — cache parsed query plans. |
@@ -380,13 +389,21 @@ createAutoRead({
     security: {
         fields: ['id', 'firstName', 'email'], // only these are filterable/sortable/selectable
         relations: ['posts'],                 // only these can be traversed/included
+        hidden: ['password', 'resetToken'],   // never queryable AND never returned
         maxDepth: 5,                           // reject deeply-nested filters
     },
 });
 ```
 
 Anything outside the allow-list returns `400`. Omit `security` (or use `'*'`) to allow
-everything. (Applies to the modern engine; the legacy dialect keeps its own validation.)
+everything. The policy applies to every dialect, the legacy one included.
+
+`fields` limits what a client may **ask for**; it does not change what Prisma returns.
+For columns that must never leave the server — hashes, tokens, internal flags — use
+`hidden`: those are stripped from every response (including rows reached through
+`include`, `include=*` or an embedded document) and rejected in filters, sorts,
+`fields`, `distinct`, `group-by` and aggregations, worded as if the field did not
+exist. Dotted paths reach inside: `hidden: ['posts.draftNotes']`.
 
 ---
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import FilterMiddleware from '../legacy/filter.middleware';
 import AutoReadMiddleware from '../legacy/auto-read.middleware';
+import { SpecGuard } from '../core/spec-guard';
 import type { InputAdapter, AdapterContext } from '../types/adapters';
 import type { RequestInput, QuerySpec } from '../types/query';
 
@@ -18,6 +19,10 @@ export interface LegacyAdapterOptions {
  * Rather than re-implement any of it, it drives the **frozen** legacy middleware
  * pipeline and captures the exact Prisma args it builds, so behaviour can never
  * drift from the original engine.
+ *
+ * The captured args are then run through {@link SpecGuard}, because the frozen
+ * pipeline knows nothing about `security`: without that pass, allow-lists and
+ * hidden fields would apply to every dialect *except* this one.
  */
 export class LegacyAdapter implements InputAdapter {
     readonly name = 'legacy';
@@ -28,9 +33,14 @@ export class LegacyAdapter implements InputAdapter {
         return input.method === 'GET';
     }
 
-    parse(input: RequestInput, _ctx?: AdapterContext): Promise<QuerySpec> {
+    parse(input: RequestInput, ctx?: AdapterContext): Promise<QuerySpec> {
         return new Promise<QuerySpec>((resolve, reject) => {
             let captured: QuerySpec = {};
+
+            const guarded = (spec: QuerySpec): QuerySpec => {
+                if (ctx?.model) SpecGuard.check(spec, ctx.model, ctx.build?.security);
+                return spec;
+            };
 
             const router = express.Router();
             router.use(FilterMiddleware.processQueryFilters(this.options.modelName));
@@ -62,14 +72,18 @@ export class LegacyAdapter implements InputAdapter {
             const response: any = {
                 statusCode: 200,
                 status() { return this; },
-                json() { resolve(captured); return this; },
+                json() {
+                    try { resolve(guarded(captured)); } catch (err) { reject(err); }
+                    return this;
+                },
                 set() { return this; },
                 setHeader() { return this; },
             };
 
-            (router as unknown as express.RequestHandler)(request, response, (err?: any) =>
-                err ? reject(err) : resolve(captured),
-            );
+            (router as unknown as express.RequestHandler)(request, response, (err?: any) => {
+                if (err) return reject(err);
+                try { resolve(guarded(captured)); } catch (guardErr) { reject(guardErr); }
+            });
         });
     }
 }

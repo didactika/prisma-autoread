@@ -10,6 +10,7 @@ import { PlainOutput } from '../output/plain.adapter';
 import { JsonApiOutput } from '../output/jsonapi.adapter';
 import { CsvOutput } from '../output/csv.adapter';
 import { PlanCache } from '../core/cache';
+import { FieldMask } from '../core/mask';
 import { Keywords } from './keywords';
 import { ProviderDetector } from './provider';
 import type {
@@ -40,7 +41,9 @@ export class OptionsResolver {
 
         const methods = (options.methods ?? ['GET']).map(method => method.toUpperCase());
         const legacy = options.legacy ?? true;
-        const searchable = options.searchable ?? [];
+        const security = OptionsResolver.buildSecurity(options.security);
+        // A hidden column must not be reachable through `?search=` either.
+        const searchable = FieldMask.visible(options.searchable ?? [], security.hidden);
         const keywords = Keywords.resolve(options.keywords);
 
         return {
@@ -53,7 +56,7 @@ export class OptionsResolver {
             routes: OptionsResolver.buildRoutes(options.routes ?? ['list']),
             defaults: OptionsResolver.buildDefaults(options.defaults),
             searchable,
-            security: OptionsResolver.buildSecurity(options.security),
+            security,
             keywords,
             jsonPathSyntax: ProviderDetector.resolve({
                 jsonPathSyntax: options.jsonPathSyntax,
@@ -137,6 +140,8 @@ export class OptionsResolver {
      * rejected outright so the deny-by-default intent cannot be bypassed silently.
      */
     private static buildSecurity(security?: SecurityOptions): ResolvedSecurity {
+        const hidden = FieldMask.compile(security?.hidden);
+
         if (security?.strict) {
             if (!Array.isArray(security.fields) || security.fields.length === 0) {
                 throw new Error(
@@ -151,6 +156,7 @@ export class OptionsResolver {
             return {
                 fields: OptionsResolver.toSet(security.fields),
                 relations: OptionsResolver.toSet(security.relations ?? []),
+                hidden,
                 maxDepth: security.maxDepth ?? 12,
             };
         }
@@ -158,6 +164,7 @@ export class OptionsResolver {
         return {
             fields: OptionsResolver.toSet(security?.fields),
             relations: OptionsResolver.toSet(security?.relations),
+            hidden,
             maxDepth: security?.maxDepth ?? 12,
         };
     }

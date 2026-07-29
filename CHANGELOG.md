@@ -4,6 +4,76 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-29
+
+Hidden fields, MongoDB embedded documents, and a security policy that finally covers
+every dialect.
+
+### Added
+
+- **`security.hidden`** — fields that are never queryable **and** never returned.
+  `security.fields` only limits what a client may ask for; Prisma still returns every
+  column, so a field left out of the allow-list was still visible in the response.
+  A hidden field is stripped from every payload after execution — no matter whether
+  the row came from a plain `findMany`, a `select`, an `include`, `include=*`, an
+  embedded document or the CSV output — and is rejected on the way in for filters,
+  sorts, `fields`, `distinct`, `group-by` and aggregations. The rejection is worded
+  exactly like an unknown field, and hidden names are removed from the
+  `Available fields: …` hint, so the endpoint cannot be used to probe for sensitive
+  columns. `?search=` silently drops them too.
+
+  Paths are dotted and case-insensitive, reaching into relations and composite types:
+  `hidden: ['password', 'enrolments.internalNote', 'program.subjects.uuid']`.
+
+- **MongoDB composite types (embedded documents)** are now first-class. A `type` block
+  lives in `datamodel.types`, not `datamodel.models`, so any filter that crossed into
+  one failed with `Model 'Program' not found in Prisma schema`. Composite fields are
+  now recognised as their own kind of field and filtered with Prisma's composite
+  operators, with the right wrapper inserted automatically:
+
+  ```
+  ?filter[program][shortname]=MAT     → { program: { is: { shortname: 'MAT' } } }
+  ?filter[program][subjects][type]=lab → { program: { is: { subjects: { some: { type: 'lab' } } } } }
+  ```
+
+  Nesting is unlimited, sub-fields are validated against the composite type and
+  coerced to their declared type, and the explicit operators (`is`, `isNot`, `equals`,
+  `isSet` for a single document; `some`, `every`, `none`, `equals`, `isEmpty`, `isSet`
+  for a list) can be written by hand. `fields=program` projects the whole document.
+  The legacy GET syntax (`?program[shortname]=MAT`, including `LIKE`/`STARTS_WITH`/
+  `ENDS_WITH`) gets the same treatment.
+
+- `FieldMask`, `SpecGuard` and `CompositeWhereNormalizer` are exported, along with the
+  `MaskNode` and `CompositeMeta` types. `ModelMeta` gained `composite()` /
+  `compositeNames()`, and `DmmfRegistry` gained `composite()` / `compositeTypeNames()`.
+- Example [15-mongodb-embedded](./examples/15-mongodb-embedded).
+
+### Fixed
+
+- **Security policies were ignored on the legacy dialect.** `legacy: true` (the
+  default) drives the frozen 0.x middleware, which never saw `security`, so
+  `fields`/`relations` allow-lists applied to every protocol *except* the default one.
+  The captured query plan is now validated against the same policy before execution.
+- `include=*` no longer crashes on MongoDB: composite fields were emitted into Prisma's
+  `include`, which rejects them. They are skipped now (embedded documents always come
+  back with the row), as is an explicitly named composite.
+- Values inside embedded documents are coerced on the legacy path too — a `DateTime`
+  in a composite type used to reach Prisma as a raw string.
+- `Model '…' not found` is now distinguished from `Composite type '…' not found`.
+
+### Changed
+
+- `ModelMetadata` gained `isComposite`, `composite()` and `compositeNames()`. Custom
+  implementations of that interface (rare — it is normally produced by `DmmfRegistry`)
+  need the three new members.
+
+### Upgrading
+
+Behaviour is unchanged unless you set `security` together with `legacy: true`, where
+allow-lists now do what they always said they did. If a client legitimately needs a
+field that is missing from `security.fields`, add it; consider moving anything you
+never want returned into the new `security.hidden`.
+
 ## [1.0.0] - 2026-07-22
 
 First stable release. A new, layered search engine sits alongside the original

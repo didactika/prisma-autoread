@@ -1,6 +1,6 @@
 import type { Executor } from '../core/executor';
 import type { OutputRegistry } from '../output/output-registry';
-import type { QuerySpec } from '../types/query';
+import type { QuerySpec, MaskNode } from '../types/query';
 import type { KeywordMap } from '../types/keywords';
 import type { RouteName } from '../types/options';
 
@@ -18,6 +18,8 @@ export interface RouteExecutionContext {
     limit: number;
     baseUrl: string;
     query: Record<string, any>;
+    /** Compiled `security.hidden`; stripped from every row before rendering. */
+    hidden?: MaskNode;
 }
 
 /** What a route hands back to the HTTP layer. */
