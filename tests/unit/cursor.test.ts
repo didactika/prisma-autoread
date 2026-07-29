@@ -32,13 +32,40 @@ describe('ObjectId validation', () => {
     });
 
     it('rejects a malformed ObjectId cursor with a 400 instead of reaching Prisma', () => {
-        expect(() => QueryBuilder.build({ cursor: '2' }, schedule, ctx)).toThrow(
-            /Invalid value '2' for field 'id': expected a 24-character hex ObjectId/,
-        );
+        expect(() => QueryBuilder.build({ cursor: '2' }, schedule, ctx))
+            .toThrow(/Invalid cursor '2'/);
+    });
+
+    it('explains what a cursor is, since a row number is the common misreading', () => {
+        const message = (() => {
+            try { QueryBuilder.build({ cursor: '1' }, schedule, ctx); return ''; }
+            catch (err: any) { return err.message as string; }
+        })();
+
+        // The client never named `id`, so the message must lead with the cursor…
+        expect(message).toMatch(/Invalid cursor '1'/);
+        // …say what a cursor actually is…
+        expect(message).toMatch(/not a row number/);
+        expect(message).toMatch(/nextCursor/);
+        // …name the expected format, and point at the positional alternative.
+        expect(message).toMatch(/24-character hex ObjectId/);
+        // Must point at parameters that actually exist on the GET dialect.
+        expect(message).toMatch(/page and limit/);
+    });
+
+    it('rejects a cursor that does not fit a numeric or date id either', () => {
+        // Coercion is best-effort and used to hand the raw string to Prisma.
+        expect(() => QueryBuilder.build({ cursor: 'abc' }, user, ctx))
+            .toThrow(/Invalid cursor 'abc'.*expects a valid Int/s);
     });
 
     it('accepts a well-formed ObjectId cursor', () => {
         expect(QueryBuilder.build({ cursor: OID }, schedule, ctx).cursor).toEqual({ id: OID });
+    });
+
+    it('keeps naming the field for filters — there the client did name it', () => {
+        expect(() => QueryBuilder.build({ where: { id: '2' } }, schedule, ctx))
+            .toThrow(/Invalid value '2' for field 'id'/);
     });
 
     it('rejects a malformed ObjectId in a filter', () => {

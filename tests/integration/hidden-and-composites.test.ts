@@ -131,6 +131,66 @@ describe('[Integration] MongoDB composite types', () => {
         });
     });
 
+    it('paginates by cursor with a real ObjectId, round-tripping nextCursor', async () => {
+        const oid1 = '507f1f77bcf86cd799439011';
+        const oid2 = '507f1f77bcf86cd799439012';
+        const { app, captured } = buildApp(
+            { model: 'CourseSchedule', legacy: false, output: 'hal', defaults: { sort: 'uuid' } },
+            [{ id: oid1, uuid: 'U1' }, { id: oid2, uuid: 'U2' }],
+        );
+
+        const res = await request(app).get(`/rows?cursor=${oid1}&limit=2`);
+        expect(res.status).toBe(200);
+        // Prisma gets the cursor plus skip:1, so the cursor row itself is excluded.
+        expect(captured.args.cursor).toEqual({ id: oid1 });
+        expect(captured.args.skip).toBe(1);
+        expect(res.body.data).toHaveLength(2);
+
+        // The next cursor is the last row's id — feed it straight back in.
+        expect(res.body.pagination.nextCursor).toBe(oid2);
+        expect(res.body.pagination.hasNext).toBe(true);
+        const next = typeof res.body._links.next === 'string'
+            ? res.body._links.next
+            : res.body._links.next.href;
+        expect(next).toContain(`cursor=${oid2}`);
+    });
+
+    it('ends the stream cleanly when the cursor is past the last row', async () => {
+        const oid = '507f1f77bcf86cd799439011';
+        const { app } = buildApp(
+            { model: 'CourseSchedule', legacy: false, output: 'hal', defaults: { sort: 'uuid' } },
+            [],
+        );
+
+        const res = await request(app).get(`/rows?cursor=${oid}&limit=2`);
+        expect(res.status).toBe(200);
+        expect(res.body.data).toEqual([]);
+        expect(res.body.pagination.hasNext).toBe(false);
+        expect(res.body._links.next).toBeUndefined();
+    });
+
+    it('rejects a row number used as a cursor, and says why', async () => {
+        const { app } = buildApp(
+            { model: 'CourseSchedule', legacy: false, defaults: { sort: 'uuid' } },
+            rows,
+        );
+        const res = await request(app).get('/rows?cursor=1');
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/Invalid cursor '1'/);
+        expect(res.body.error).toMatch(/not a row number/);
+    });
+
+    it('offers page/limit for the positional paging a row number implies', async () => {
+        const { app, captured } = buildApp(
+            { model: 'CourseSchedule', legacy: false, defaults: { sort: 'uuid' } },
+            rows,
+        );
+        await request(app).get('/rows?page=2&limit=10');
+        expect(captured.args.skip).toBe(10);
+        expect(captured.args.take).toBe(10);
+        expect(captured.args.cursor).toBeUndefined();
+    });
+
     it('never puts a composite field into include', async () => {
         const { app, captured } = buildApp(
             { model: 'CourseSchedule', legacy: true, defaults: { sort: 'uuid' } },

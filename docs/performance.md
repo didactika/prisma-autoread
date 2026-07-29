@@ -64,13 +64,31 @@ GET /users?limit=50&cursor=50
 
 The engine passes `cursor` to Prisma and skips the cursor row itself.
 
+> **A cursor is a row identifier, not a row number.** `?cursor=1` does not mean
+> "start at the first row" — it means "start after the row whose id is `1`". Read the
+> next one from `pagination.nextCursor` (or the `next` link) and pass it straight
+> back. For positional paging — "give me rows 20 to 40" — use `page` and `limit`,
+> which is what they are for.
+
 The cursor value is coerced and validated against the id column like any other
-input, so a wrong-typed one is a `400` rather than a driver error. On MongoDB that
-includes the `@db.ObjectId` format:
+input, so a wrong-typed one is a `400` rather than a driver error. This is where the
+row-number reading usually surfaces, most visibly on MongoDB, where an id is a
+24-character hex `@db.ObjectId`:
 
 ```
-GET /course-schedules?cursor=2
-→ 400 Invalid value '2' for field 'id': expected a 24-character hex ObjectId
+GET /course-schedules?cursor=1
+→ 400 Invalid cursor '1': a cursor is the 'id' of the last row you saw
+      (see pagination.nextCursor), not a row number, and 'id' expects a
+      24-character hex ObjectId. For positional paging use page and limit instead.
+
+GET /course-schedules?cursor=507f1f77bcf86cd799439011&limit=50   ✅
+```
+
+To page by a column other than `id` — any `@unique` one works — address it
+explicitly:
+
+```
+GET /course-schedules?cursor[uuid]=8f3a…&limit=50
 ```
 
 **Stopping.** Follow `next` until it disappears. On the last page `nextCursor` is

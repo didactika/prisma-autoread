@@ -292,10 +292,12 @@ GET /users?page=2&limit=20
 GET /users?limit=20&cursor=42
 ```
 
-Follow `next` until it disappears: on the last page `nextCursor` is absent and
-`hasNext` is `false`. The value is validated against the id column, so a wrong-typed
-cursor (including a malformed MongoDB `@db.ObjectId`) returns `400`, not a driver
-error.
+A cursor is a **row identifier, not a row number**: `cursor=42` means "start after
+the row with id 42", not "start at row 42" — for that, use `page`/`limit`. Follow
+`next` until it disappears: on the last page `nextCursor` is absent and `hasNext` is
+`false`. The value is validated against the id column, so a wrong-typed cursor
+(including a malformed MongoDB `@db.ObjectId`) returns `400` naming the problem
+instead of a driver error. Page by another unique column with `?cursor[uuid]=…`.
 
 ---
 

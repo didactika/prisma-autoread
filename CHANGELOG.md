@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-07-29
+
+Makes the cursor error say what a cursor *is*. No API changes.
+
+### Fixed
+
+- **The cursor error blamed a field the client never named.** `?cursor=1` answered
+  `Invalid value '1' for field 'id'`, which reads as a complaint about a filter
+  nobody wrote and leaves the actual mistake unsaid. A cursor is a **row identifier,
+  not a row number** — `cursor=1` means "start after the row whose id is 1", not
+  "start at row 1" — and that is the usual misreading. The message now leads with the
+  cursor, says so, and points at `page`/`limit` for positional paging:
+
+  ```
+  Invalid cursor '1': a cursor is the 'id' of the last row you saw
+  (see pagination.nextCursor), not a row number, and 'id' expects a
+  24-character hex ObjectId. For positional paging use page and limit instead.
+  ```
+
+  Filter errors still name the field — there the client *did* name it.
+
+- A cursor that does not fit a numeric or date id is rejected too. Coercion is
+  best-effort, so `?cursor=abc` on an `Int` id still handed the raw string to Prisma,
+  which answered with a validation error of its own. Closes the half of 1.1.1's fix
+  that only covered datasource-native types.
+- The "no `id` field" message now suggests the object form (`cursor[uuid]=…`), which
+  is how you page by any other unique column.
+
+### Documentation
+
+- README, `query-language.md` and `performance.md` now state up front that a cursor
+  is a row identifier rather than a position, show the `?cursor[uuid]=…` form, and
+  contrast both with `page`/`limit`. The parameter behaved this way all along; nothing
+  said so plainly enough.
+
 ## [1.1.1] - 2026-07-29
 
 Cursor pagination fixes. No API changes; upgrading is a drop-in.

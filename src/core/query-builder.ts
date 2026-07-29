@@ -453,7 +453,7 @@ export class QueryBuilder {
                 const field = FieldMask.hides(scope.mask, key) ? undefined : model.field(key);
                 // Unknown keys pass through: Prisma also accepts a compound unique
                 // (`{ userId_campusId: { … } }`), which is no single field.
-                out[key] = field ? ValueCoercer.field(operand, field) : operand;
+                out[key] = field ? QueryBuilder.cursorValue(operand, field) : operand;
             }
             return out;
         }
@@ -461,10 +461,47 @@ export class QueryBuilder {
         const idField = model.field('id');
         if (!idField) {
             throw new BadRequest({
-                msg: `Cursor pagination needs an 'id' field on ${model.name}; pass an explicit cursor object instead`,
+                msg: `Cursor pagination needs an 'id' field on ${model.name}; pass an explicit cursor object instead, e.g. cursor[uuid]=…`,
             });
         }
-        return { [idField.name]: ValueCoercer.field(value, idField) };
+        return { [idField.name]: QueryBuilder.cursorValue(value, idField) };
+    }
+
+    /**
+     * Coerce one cursor value, reporting failures in terms of the `cursor` parameter.
+     *
+     * A cursor is a *record identifier*, not a row number, and that is the single
+     * most common misreading of it — so when the value does not fit the column, say
+     * what a cursor is rather than complaining about a field the client never named.
+     */
+    private static cursorValue(value: any, field: FieldMeta): any {
+        let coerced: any;
+        try {
+            coerced = ValueCoercer.field(value, field);
+        } catch {
+            throw QueryBuilder.badCursor(value, field);
+        }
+
+        // Coercion is best-effort: an unconvertible value comes back as the raw
+        // string, which Prisma would then reject with a validation error of its own.
+        const fits =
+            field.type === 'Int' || field.type === 'Float' || field.type === 'Decimal'
+                ? typeof coerced === 'number'
+                : field.type === 'BigInt' ? typeof coerced === 'bigint'
+                : field.type === 'DateTime' ? coerced instanceof Date
+                : true;
+        if (!fits) throw QueryBuilder.badCursor(value, field);
+
+        return coerced;
+    }
+
+    private static badCursor(value: any, field: FieldMeta): BadRequest {
+        const expected = field.nativeType === 'ObjectId'
+            ? 'a 24-character hex ObjectId'
+            : `a valid ${field.type}`;
+        return new BadRequest({
+            msg: `Invalid cursor '${value}': a cursor is the '${field.name}' of the last row you saw (see pagination.nextCursor), not a row number, and '${field.name}' expects ${expected}. For positional paging use page and limit instead.`,
+        });
     }
 
     // ── access control ─────────────────────────────────────────────────────────
