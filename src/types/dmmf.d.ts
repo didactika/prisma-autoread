@@ -8,6 +8,12 @@ export interface FieldMeta {
     /** DMMF kind: `'scalar'` | `'enum'`. */
     kind: string;
     isList: boolean;
+    /**
+     * Datasource-native type when the schema declares one (`@db.ObjectId` →
+     * `'ObjectId'`). `type` alone is not enough: a MongoDB `@db.ObjectId` column is
+     * a plain `String` in the DMMF, yet only accepts 24-character hex values.
+     */
+    nativeType?: string;
 }
 
 export interface RelationMeta {

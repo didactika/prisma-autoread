@@ -38,7 +38,14 @@ export interface OutputContext {
     query: Record<string, any>;
     /** Resource name (the model), used by formats such as JSON:API. */
     resource?: string;
-    /** When set, the response is in cursor mode and this is the next page's cursor. */
+    /**
+     * Whether the request used cursor pagination. Kept separate from
+     * {@link nextCursor}, which is absent on the last page — inferring the mode from
+     * it made an exhausted cursor page fall back to offset semantics and claim
+     * `hasNext: true`.
+     */
+    cursorMode?: boolean;
+    /** The next page's cursor; absent once the stream is exhausted. */
     nextCursor?: string | number;
     /** Resolved keyword names, so links use the configured parameter names. */
     keywords: KeywordMap;

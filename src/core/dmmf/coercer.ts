@@ -1,3 +1,9 @@
+import { BadRequest } from '../../errors';
+import type { FieldMeta } from '../../types/dmmf';
+
+/** A MongoDB ObjectId is exactly 24 hex characters. */
+const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+
 /**
  * Coerces filter values to the JS type implied by the Prisma column type.
  *
@@ -5,6 +11,41 @@
  * Coercion is idempotent: an already-typed value is returned unchanged.
  */
 export class ValueCoercer {
+    /**
+     * Coerce a value **and** check it against the column's native type.
+     *
+     * Prefer this over {@link scalar} wherever the field metadata is at hand: a
+     * MongoDB `@db.ObjectId` column is typed `String` in the DMMF, so coercion alone
+     * lets `?filter[id]=2` through and Prisma answers with an opaque 500
+     * (`Malformed ObjectID`). Here it is a `400` naming the field.
+     *
+     * Only use it for operands meant to be a *whole* value — not for `contains`,
+     * `startsWith` or `endsWith`, which carry fragments by definition.
+     */
+    static field(value: any, field: FieldMeta): any {
+        return ValueCoercer.assertNative(ValueCoercer.scalar(value, field.type), field);
+    }
+
+    /** {@link field} for list operands (`in` / `notIn`). */
+    static fieldList(value: any, field: FieldMeta): any[] {
+        return ValueCoercer.list(value, field.type).map(item =>
+            ValueCoercer.assertNative(item, field),
+        );
+    }
+
+    /** Reject values the datasource cannot represent for this column. */
+    private static assertNative(value: any, field: FieldMeta): any {
+        if (field.nativeType !== 'ObjectId') return value;
+        if (value === null || value === undefined) return value;
+
+        if (typeof value !== 'string' || !OBJECT_ID.test(value)) {
+            throw new BadRequest({
+                msg: `Invalid value '${value}' for field '${field.name}': expected a 24-character hex ObjectId`,
+            });
+        }
+        return value;
+    }
+
     /** Coerce a single scalar value. */
     static scalar(value: any, type?: string): any {
         if (value === null || value === undefined) return value;

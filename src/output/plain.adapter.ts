@@ -8,7 +8,7 @@ export class PlainOutput implements OutputAdapter {
     format(result: QueryResult, ctx: OutputContext): unknown {
         const { page, limit, total } = ctx;
         const totalPages = Math.ceil(total / limit) || 0;
-        const cursorMode = ctx.nextCursor !== undefined;
+        const cursorMode = ctx.cursorMode ?? ctx.nextCursor !== undefined;
 
         return {
             data: result.data,
@@ -17,7 +17,7 @@ export class PlainOutput implements OutputAdapter {
                 limit,
                 total,
                 totalPages,
-                hasNext: cursorMode ? true : page < totalPages,
+                hasNext: cursorMode ? ctx.nextCursor !== undefined : page < totalPages,
                 hasPrev: page > 1,
                 ...(cursorMode ? { nextCursor: ctx.nextCursor } : {}),
             },

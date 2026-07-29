@@ -64,6 +64,23 @@ GET /users?limit=50&cursor=50
 
 The engine passes `cursor` to Prisma and skips the cursor row itself.
 
+The cursor value is coerced and validated against the id column like any other
+input, so a wrong-typed one is a `400` rather than a driver error. On MongoDB that
+includes the `@db.ObjectId` format:
+
+```
+GET /course-schedules?cursor=2
+→ 400 Invalid value '2' for field 'id': expected a 24-character hex ObjectId
+```
+
+**Stopping.** Follow `next` until it disappears. On the last page `nextCursor` is
+absent, `pagination.hasNext` is `false` and no `next` link is emitted — a cursor
+pointing past the end is not an error, it simply returns no rows. Cursor responses
+never carry `first`/`last`/`prev` links: there is no page number to jump to.
+
+A cursor whose row was deleted meanwhile also returns an empty page rather than
+failing, so a client that keeps a stale cursor degrades quietly.
+
 ## Tips
 
 - Index whatever you let clients filter and sort on — the library builds the query, the

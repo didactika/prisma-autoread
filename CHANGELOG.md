@@ -4,10 +4,46 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-07-29
+
+Cursor pagination fixes. No API changes; upgrading is a drop-in.
+
+### Fixed
+
+- **A malformed cursor reached the driver unchecked.** The cursor was the one input
+  the engine passed to Prisma without coercing or validating it. Every value is now
+  checked against the id column, so `?cursor=2` returns `400` instead of a
+  `PrismaClientKnownRequestError` thrown from inside `dist/index.js`. This bit hardest
+  on MongoDB, where an `@db.ObjectId` id is a plain `String` in the DMMF and only the
+  driver knew better (`Malformed ObjectID: … got "2", length 1`).
+- **`@db.ObjectId` values are validated everywhere**, not only in the cursor:
+  `?filter[id]=2`, `[in]`, `[not]` and any other whole-value operator now return
+  `400 Invalid value '2' for field 'id': expected a 24-character hex ObjectId`.
+  Fragment operators (`contains`, `startsWith`, `endsWith`) are exempt by design.
+  `FieldMeta` carries the datasource-native type for this.
+- **Exhausted cursor pages lied.** Cursor mode was inferred from `nextCursor`, which is
+  absent on the last page, so the response silently fell back to offset semantics and
+  reported `hasNext: true` with `first`/`last`/`next` *page* links — pointing a client
+  straight back into a stream it had already finished. `OutputContext.cursorMode` now
+  states the mode explicitly: the last page reports `hasNext: false` and emits no
+  `next` link. A cursor pointing past the end (or at a deleted row) still returns an
+  empty page rather than an error, which is Prisma's own behaviour.
+- `?cursor[id]=…` (the object form) is coerced too; it used to pass the raw string
+  through. Compound-unique cursors keep passing through untouched.
+- Cursor pagination on a model without an `id` field now explains itself instead of
+  sending `{ id: undefined }` to Prisma.
+
+### Changed
+
+- `OutputContext` gained the optional `cursorMode`. Custom output adapters keep
+  working; they fall back to the old inference when it is absent.
+- `ValueCoercer` gained `field()` / `fieldList()`, which coerce *and* check the native
+  type. `scalar()` and `list()` are unchanged, so existing callers are unaffected.
+
 ## [1.1.0] - 2026-07-29
 
-Hidden fields, MongoDB embedded documents, and a security policy that finally covers
-every dialect.
+Hidden fields and MongoDB embedded documents, plus a security policy that finally
+covers every dialect.
 
 ### Added
 

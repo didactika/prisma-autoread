@@ -19,13 +19,15 @@ export class JsonApiOutput implements OutputAdapter {
             return { type, id, attributes };
         });
 
+        const cursorMode = ctx.cursorMode ?? ctx.nextCursor !== undefined;
+
         const links: Record<string, string> = {
             self: builder.page(ctx.page, ctx.limit),
             first: builder.page(1, ctx.limit),
             last: builder.page(totalPages, ctx.limit),
         };
         if (ctx.page > 1) links.prev = builder.page(ctx.page - 1, ctx.limit);
-        if (ctx.page < totalPages) links.next = builder.page(ctx.page + 1, ctx.limit);
+        if (!cursorMode && ctx.page < totalPages) links.next = builder.page(ctx.page + 1, ctx.limit);
         if (ctx.nextCursor !== undefined) links.next = builder.cursor(ctx.nextCursor, ctx.limit);
 
         return {

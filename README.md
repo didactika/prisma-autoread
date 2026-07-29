@@ -292,6 +292,11 @@ GET /users?page=2&limit=20
 GET /users?limit=20&cursor=42
 ```
 
+Follow `next` until it disappears: on the last page `nextCursor` is absent and
+`hasNext` is `false`. The value is validated against the id column, so a wrong-typed
+cursor (including a malformed MongoDB `@db.ObjectId`) returns `400`, not a driver
+error.
+
 ---
 
 ## Routes

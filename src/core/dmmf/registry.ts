@@ -41,6 +41,8 @@ export class ModelMeta implements ModelMetadata {
                     type: field.type,
                     kind: field.kind,
                     isList: !!field.isList,
+                    // DMMF shape: `nativeType: [name, args] | null`.
+                    nativeType: field.nativeType?.[0],
                 });
             }
         }

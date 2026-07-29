@@ -151,6 +151,10 @@ GET /users?page=2&limit=20        # offset
 GET /users?limit=20&cursor=42     # cursor; response carries pagination.nextCursor
 ```
 
+The cursor is validated against the id column like any other value — a wrong-typed
+one (a malformed `@db.ObjectId`, say) returns `400`. Keep following `next` until it
+disappears: past the last row `nextCursor` is absent and `hasNext` is `false`.
+
 ## Aggregations
 
 ```

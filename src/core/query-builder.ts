@@ -78,7 +78,7 @@ export class QueryBuilder {
 
         if (raw.distinct) spec.distinct = QueryBuilder.fieldList(raw.distinct, model, scope, 'distinct');
         if (raw.cursor !== undefined && raw.cursor !== '') {
-            spec.cursor = QueryBuilder.buildCursor(raw.cursor, model);
+            spec.cursor = QueryBuilder.buildCursor(raw.cursor, model, scope);
         }
 
         QueryBuilder.applyAggregations(raw, spec, model, scope);
@@ -138,7 +138,7 @@ export class QueryBuilder {
             const field = QueryBuilder.resolveField(model, key, scope);
             out[field.name] = field.type === 'Json'
                 ? QueryBuilder.buildJson(value, scope.jsonPathSyntax)
-                : QueryBuilder.buildFieldCondition(value, field.type);
+                : QueryBuilder.buildFieldCondition(value, field);
         }
 
         return out;
@@ -239,10 +239,10 @@ export class QueryBuilder {
         return mask === scope.mask ? scope : { ...scope, mask };
     }
 
-    private static buildFieldCondition(value: any, type: string): any {
+    private static buildFieldCondition(value: any, field: FieldMeta): any {
         if (value === null) return null;
-        if (Array.isArray(value)) return { in: ValueCoercer.list(value, type) };
-        if (typeof value !== 'object') return ValueCoercer.scalar(value, type);
+        if (Array.isArray(value)) return { in: ValueCoercer.fieldList(value, field) };
+        if (typeof value !== 'object') return ValueCoercer.field(value, field);
 
         const condition: Record<string, any> = {};
         for (const [key, operand] of Object.entries(value)) {
@@ -254,15 +254,19 @@ export class QueryBuilder {
                 if (truthy) condition.equals = null;
                 else condition.not = null;
             } else if (OperatorRegistry.LIST_OPS.has(op)) {
-                condition[op] = ValueCoercer.list(operand, type);
+                condition[op] = ValueCoercer.fieldList(operand, field);
             } else if (op === 'mode') {
                 condition.mode = operand;
+            } else if (OperatorRegistry.PARTIAL_OPS.has(op)) {
+                // `contains`/`startsWith`/… carry fragments, so the native-type check
+                // (a full ObjectId, say) must not apply to them.
+                condition[op] = ValueCoercer.scalar(operand, field.type);
             } else if (op === 'not') {
                 condition.not = operand !== null && typeof operand === 'object'
-                    ? QueryBuilder.buildFieldCondition(operand, type)
-                    : ValueCoercer.scalar(operand, type);
+                    ? QueryBuilder.buildFieldCondition(operand, field)
+                    : ValueCoercer.field(operand, field);
             } else {
-                condition[op] = ValueCoercer.scalar(operand, type);
+                condition[op] = ValueCoercer.field(operand, field);
             }
         }
         return condition;
@@ -435,10 +439,32 @@ export class QueryBuilder {
         return out;
     }
 
-    private static buildCursor(value: any, model: ModelMeta): Record<string, any> {
-        if (value !== null && typeof value === 'object' && !Array.isArray(value)) return value;
-        const idField = model.field('id')?.name ?? 'id';
-        return { [idField]: ValueCoercer.scalar(value, model.field(idField)?.type) };
+    /**
+     * Build the `cursor` argument, coercing and validating it like any other value.
+     *
+     * Without this the cursor was the one input that reached Prisma unchecked, so
+     * `?cursor=2` against a MongoDB `@db.ObjectId` id surfaced as a 500 from inside
+     * the driver (`Malformed ObjectID`) instead of a 400.
+     */
+    private static buildCursor(value: any, model: ModelMeta, scope: BuildScope): Record<string, any> {
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+            const out: Record<string, any> = {};
+            for (const [key, operand] of Object.entries(value)) {
+                const field = FieldMask.hides(scope.mask, key) ? undefined : model.field(key);
+                // Unknown keys pass through: Prisma also accepts a compound unique
+                // (`{ userId_campusId: { … } }`), which is no single field.
+                out[key] = field ? ValueCoercer.field(operand, field) : operand;
+            }
+            return out;
+        }
+
+        const idField = model.field('id');
+        if (!idField) {
+            throw new BadRequest({
+                msg: `Cursor pagination needs an 'id' field on ${model.name}; pass an explicit cursor object instead`,
+            });
+        }
+        return { [idField.name]: ValueCoercer.field(value, idField) };
     }
 
     // ── access control ─────────────────────────────────────────────────────────

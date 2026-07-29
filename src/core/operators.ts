@@ -94,6 +94,14 @@ export class OperatorRegistry {
     /** Operators whose value is a list. */
     static readonly LIST_OPS: ReadonlySet<string> = new Set(['in', 'notIn']);
 
+    /**
+     * Operators whose operand is a *fragment* of a value rather than a whole one,
+     * so datasource-native format checks must not be applied to them.
+     */
+    static readonly PARTIAL_OPS: ReadonlySet<string> = new Set([
+        'contains', 'startsWith', 'endsWith', 'search',
+    ]);
+
     /** Resolve a field operator key (alias or Prisma-native) to its Prisma name. */
     static field(key: string): string | undefined {
         if (key.toLowerCase() === 'isnull') return 'isNull';

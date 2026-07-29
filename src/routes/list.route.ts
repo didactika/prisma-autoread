@@ -28,6 +28,7 @@ export class ListRoute extends Route {
                 query: ctx.query,
                 resource: ctx.resource,
                 keywords: ctx.keywords,
+                cursorMode: spec.cursor !== undefined,
                 nextCursor: ListRoute.nextCursor(spec, data, ctx),
             },
         );

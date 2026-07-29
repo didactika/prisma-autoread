@@ -14,7 +14,7 @@ export class HalOutput implements OutputAdapter {
         const { page, limit, total } = ctx;
         const totalPages = Math.ceil(total / limit) || 0;
         const links = new LinkBuilder(ctx.baseUrl, ctx.query, ctx.keywords);
-        const cursorMode = ctx.nextCursor !== undefined;
+        const cursorMode = ctx.cursorMode ?? ctx.nextCursor !== undefined;
 
         const payload = halson({
             data: result.data,
@@ -23,7 +23,7 @@ export class HalOutput implements OutputAdapter {
                 limit,
                 total,
                 totalPages,
-                hasNext: cursorMode ? true : page < totalPages,
+                hasNext: cursorMode ? ctx.nextCursor !== undefined : page < totalPages,
                 hasPrev: page > 1,
                 ...(cursorMode ? { nextCursor: ctx.nextCursor } : {}),
             },
@@ -31,7 +31,8 @@ export class HalOutput implements OutputAdapter {
 
         if (cursorMode) {
             payload.addLink('self', links.limitOnly(limit));
-            payload.addLink('next', links.cursor(ctx.nextCursor!, limit));
+            // No next link once the cursor is exhausted — that is how a client stops.
+            if (ctx.nextCursor !== undefined) payload.addLink('next', links.cursor(ctx.nextCursor, limit));
             return payload;
         }
 

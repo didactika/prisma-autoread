@@ -45,7 +45,9 @@ Clients can pick a format per request:
 }
 ```
 
-In cursor mode `pagination.nextCursor` is present and the links collapse to `self` + `next`.
+In cursor mode the links collapse to `self` + `next`, and `pagination.nextCursor`
+carries the next position. On the last page both `next` and `nextCursor` are gone and
+`hasNext` is `false` — that absence is how a client knows to stop.
 
 **plain**
 

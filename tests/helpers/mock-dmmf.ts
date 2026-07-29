@@ -5,7 +5,7 @@
  *   User           – id(Int), firstName(String), lastName(String), email(String), age(Int), active(Boolean), metadata(Json)
  *   Campus         – id(Int), name(String), uuid(String), settings(Json)
  *   UserEnrolment  – id(Int), userId(Int), campusId(Int), user→User, campus→Campus
- *   CourseSchedule – id(String), uuid(String), groupTerm(String), program→Program (composite)
+ *   CourseSchedule – id(String @db.ObjectId), uuid(String), groupTerm(String), program→Program (composite)
  *
  * Composite types (MongoDB `type` blocks, which live under `datamodel.types`):
  *   Program – shortname, name, uuid, subjects→Subject[]
@@ -13,7 +13,7 @@
  *   Activity – codeSuffix, extraRanges(Json)
  */
 
-const makeScalar = (name: string, type: string) => ({
+const makeScalar = (name: string, type: string, nativeType?: string) => ({
     name,
     kind: 'scalar',
     type,
@@ -23,6 +23,8 @@ const makeScalar = (name: string, type: string) => ({
     isId: name === 'id',
     isReadOnly: false,
     hasDefaultValue: name === 'id',
+    // DMMF shape for `@db.X`; `null` when the schema declares no native type.
+    nativeType: nativeType ? [nativeType, []] : null,
 });
 
 const makeRelation = (name: string, type: string, isList = false) => ({
@@ -90,7 +92,8 @@ export const mockDmmf = {
             {
                 name: 'CourseSchedule',
                 fields: [
-                    makeScalar('id', 'String'),
+                    // MongoDB `@id @default(auto()) @map("_id") @db.ObjectId`
+                    makeScalar('id', 'String', 'ObjectId'),
                     makeScalar('uuid', 'String'),
                     makeScalar('groupTerm', 'String'),
                     makeScalar('startDate', 'DateTime'),
