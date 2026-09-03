@@ -12,6 +12,7 @@ import { OptionsResolver } from '../config/options-resolver';
 import { EndpointController } from './endpoint-controller';
 import { NestRequestMapper } from './nest-request.mapper';
 import { NestSwaggerDecorator } from './nest-swagger.decorator';
+import { PathNormalizer } from './path-normalizer';
 import type { ResolvedOptions, ResolvedRoute } from '../types/options';
 import type {
     NestAutoReadRegistration,
@@ -105,11 +106,11 @@ export class NestBinding {
 
     private static controllerPath(path: string): string {
         if (typeof path !== 'string') throw new Error('prisma-autoread/nest: `path` is required');
-        return path.replace(/^\/+|\/+$/g, '');
+        return PathNormalizer.stripEdgeSlashes(path);
     }
 
     private static routePath(path: string): string {
-        return path === '/' ? '' : path.replace(/^\/+|\/+$/g, '');
+        return path === '/' ? '' : PathNormalizer.stripEdgeSlashes(path);
     }
 
     private static handlerName(route: ResolvedRoute, method: string): string {

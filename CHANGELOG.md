@@ -15,6 +15,13 @@ All notable changes to this project are documented here. The format is based on
   tags, stable operation ids, query controls, JSON bodies, success responses and
   output content types. Nest continues to work when Swagger is not installed.
 
+### Fixed
+
+- Nest path normalization now runs in linear time for request-controlled paths,
+  avoiding polynomial regular-expression backtracking.
+- Jest can transform the ESM-only `http-response-client` v2 dependency, keeping the
+  test suite compatible with the current Dependabot update.
+
 ## [1.1.2] - 2026-07-29
 
 Makes the cursor error say what a cursor *is*. No API changes.

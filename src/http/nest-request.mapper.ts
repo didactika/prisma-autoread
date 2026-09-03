@@ -1,4 +1,5 @@
 import { QueryStringParser } from './query-string-parser';
+import { PathNormalizer } from './path-normalizer';
 import type { NestMappedRequest, NestRequestLike, NestRequestMapOptions } from '../types/nest';
 
 /** Translates Nest's Express/Fastify request objects into the neutral HTTP contract. */
@@ -60,18 +61,21 @@ export class NestRequestMapper {
 
     private static routePath(path: string): string {
         if (!path || path === '/') return '/';
-        return `/${path.replace(/^\/+|\/+$/g, '')}`;
+        const trimmed = PathNormalizer.stripEdgeSlashes(path);
+        return trimmed ? `/${trimmed}` : '/';
     }
 
     private static mountPath(pathname: string, routePath: string): string {
-        const path = pathname.replace(/\/+$/, '') || '/';
+        const path = PathNormalizer.stripTrailingSlashes(pathname) || '/';
         if (routePath === '/') return path;
         return path.endsWith(routePath) ? (path.slice(0, -routePath.length) || '/') : path;
     }
 
     private static withConfiguredPrefix(mountPath: string, prefix?: string): string {
         if (!prefix) return mountPath === '/' ? '' : mountPath;
-        const normalPrefix = `/${prefix.replace(/^\/+|\/+$/g, '')}`;
+        const trimmed = PathNormalizer.stripEdgeSlashes(prefix);
+        if (!trimmed) return mountPath === '/' ? '' : mountPath;
+        const normalPrefix = `/${trimmed}`;
         if (mountPath === normalPrefix || mountPath.startsWith(`${normalPrefix}/`)) return mountPath;
         return `${normalPrefix}${mountPath === '/' ? '' : mountPath}`;
     }
