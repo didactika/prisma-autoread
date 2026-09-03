@@ -17,6 +17,7 @@ rectangle "prisma-autoread" {
 
   rectangle "Bindings" as bindings {
     component "ExpressBinding" as express
+    component "NestBinding"    as nest
     component "FastifyBinding" as fastify
     component "HonoBinding"    as hono
   }

@@ -31,7 +31,7 @@ query.
 ## Pipeline
 
 ```
-Binding (Express|Fastify|Hono) → EndpointController → InputAdapter → QueryBuilder
+Binding (Express|NestJS|Fastify|Hono) → EndpointController → InputAdapter → QueryBuilder
     → QuerySpec → Route → Executor → OutputAdapter
 ```
 

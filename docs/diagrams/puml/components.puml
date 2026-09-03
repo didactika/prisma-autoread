@@ -9,6 +9,7 @@ skinparam package {
 skinparam ArrowColor #333333
 
 package "index.ts\n<i>public surface</i>" as idx {}
+package "nest.ts\n<i>optional Nest surface</i>" as nestidx {}
 package "auto-read\n<i>AutoReadEndpoint</i>" as autoread {}
 package "config\n<i>OptionsResolver · Keywords · ProviderDetector</i>" as config {}
 package "http\n<i>EndpointController · bindings</i>" as http {}
@@ -21,6 +22,8 @@ package "legacy\n<i>frozen engine</i>" as legacy {}
 package "types\n<i>*.d.ts (declaration only)</i>" as types {}
 
 idx      --> autoread
+nestidx  --> config
+nestidx  --> http
 autoread --> config
 autoread --> http
 http     --> input

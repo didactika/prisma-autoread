@@ -8,8 +8,8 @@ The internal building blocks of the library and how a request moves through them
 
 ## Notes
 
-- **Bindings** are the only place a framework is referenced; Fastify and Hono are typed
-  structurally so neither is a dependency.
+- **Bindings** are the only place a framework is referenced. Nest is isolated behind
+  its optional entry point; Fastify and Hono are structurally typed.
 - **`EndpointController`** is the single pipeline. Every binding is a thin translation
   to and from `HttpRequestContext` / `HttpResponsePayload`.
 - The **`LegacyAdapter`** does not reimplement the old grammar: it drives the frozen

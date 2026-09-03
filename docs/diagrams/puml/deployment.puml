@@ -14,7 +14,7 @@ node "Client tier" {
 }
 
 node "Application node\n<i>Node.js runtime</i>" {
-  component "HTTP server\nExpress · Fastify · Hono" as server
+  component "HTTP server\nExpress · NestJS · Fastify · Hono" as server
   component "prisma-autoread\n<i>in-process library</i>" as lib
   component "Prisma Client\n<i>+ query engine</i>"      as prisma
 }

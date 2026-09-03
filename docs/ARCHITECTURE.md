@@ -27,7 +27,7 @@ Principles, in priority order:
 HTTP request  (GET | QUERY | POST)
       │
       ▼
-[ Binding ]            framework glue (Express / Fastify / Hono)
+[ Binding ]            framework glue (Express / NestJS / Fastify / Hono)
       │  normalises to HttpRequestContext
       ▼
 [ EndpointController ] framework-agnostic pipeline
@@ -67,7 +67,8 @@ self-contained class plus one registration.
 | `Keywords` | Global/per-endpoint names of the reserved query parameters. | `src/config/` |
 | `ProviderDetector` | Resolves the datasource provider → JSON `path` syntax. | `src/config/` |
 | `EndpointController` | Framework-agnostic request pipeline; returns a plain payload. | `src/http/` |
-| `ExpressBinding`, `FastifyBinding`, `HonoBinding` | Translate framework req/res to the neutral contracts. | `src/http/` |
+| `ExpressBinding`, `NestBinding`, `FastifyBinding`, `HonoBinding` | Translate framework req/res to the neutral contracts. | `src/http/` |
+| `AutoReadModule` | Contributes generated native controllers to a Nest application. | `src/nest.ts` |
 | `InputAdapter` (+ `InputRegistry`) | Parse one input format into a `QuerySpec`. | `src/input/` |
 | `RsqlParser`, `ODataParser` | Standalone grammar parsers used by their adapters. | `src/input/parsers/` |
 | `QueryControlsParser` | Shared parsing of sort/fields/include/pagination/aggregations. | `src/input/` |
@@ -118,6 +119,7 @@ All types are declaration-only files under `src/types/`:
 | `adapters.d.ts` | Input/output adapter contracts and their contexts. |
 | `dmmf.d.ts` | Field/relation metadata projections. |
 | `http.d.ts` | Neutral request/response plus structural framework contracts. |
+| `nest.d.ts` | Nest registration, dynamic-module and native request/response contracts. |
 | `keywords.d.ts` | The reserved-parameter map. |
 | `prisma.d.ts` | Delegate, finder and provider types. |
 | `index.ts` | Legacy engine types (kept as a module — the legacy engine is frozen). |
@@ -134,7 +136,7 @@ into the emitted JavaScript.
 | `POST` | JSON body | Fallback for clients and proxies that don't support `QUERY`. |
 
 Bindings route non-standard methods themselves (Express `router.all` + a method
-guard; Hono `app.on`; Fastify `route({ method })`).
+guard; Hono `app.on`; Fastify `route({ method })`; native Nest request decorators).
 
 ## 6. Input formats
 
