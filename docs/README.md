@@ -16,7 +16,7 @@ guide, then dig into the query grammar or the internals.
 | [Keywords](./keywords.md) | Renaming reserved query parameters to avoid clashes with your columns. |
 | [Security](./security.md) | Allow-lists, strict mode and nesting limits. |
 | [Performance](./performance.md) | Metadata caching, query-plan cache and telemetry. |
-| [Frameworks](./frameworks.md) | Express, Fastify and Hono bindings. |
+| [Frameworks](./frameworks.md) | Express, NestJS, Fastify and Hono bindings; automatic Nest Swagger metadata. |
 | [Migration](./migration.md) | Moving from the 0.x middleware to the v1 engine. |
 | [Publishing](./publishing.md) | Release flow, npm authentication and 2FA. |
 

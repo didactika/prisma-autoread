@@ -19,6 +19,9 @@ package "entry" {
     +applyToFastify(app)
     +applyToHono(app)
   }
+  class AutoReadModule {
+    +register(options)
+  }
 }
 
 package "config" {
@@ -54,6 +57,16 @@ package "http" {
   }
   class HonoBinding {
     +apply(app)
+  }
+  class NestBinding {
+    +createController()
+  }
+  class NestRequestMapper <<static>> {
+    +map(options)
+  }
+  class NestSwaggerDecorator {
+    +decorateController(controller, options)
+    +decorateOperation(target, key, descriptor, route, method, options)
   }
   class QueryStringParser <<static>> {
     +fromUrl(url)
@@ -166,13 +179,18 @@ AutoReadEndpoint --> EndpointController
 AutoReadEndpoint ..> ExpressBinding
 AutoReadEndpoint ..> FastifyBinding
 AutoReadEndpoint ..> HonoBinding
+AutoReadModule ..> NestBinding
 
 ExpressBinding --> EndpointController
 FastifyBinding --> EndpointController
 HonoBinding --> EndpointController
+NestBinding --> EndpointController
 ExpressBinding ..> QueryStringParser
 FastifyBinding ..> QueryStringParser
 HonoBinding ..> QueryStringParser
+NestBinding ..> NestRequestMapper
+NestBinding ..> NestSwaggerDecorator
+NestRequestMapper ..> QueryStringParser
 
 EndpointController --> InputRegistry
 EndpointController --> RouteRegistry

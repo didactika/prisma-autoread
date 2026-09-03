@@ -49,6 +49,6 @@ move them forward. The internal, per-request view is the
 |---|---|
 | **Backend developer** | `declareEndpoint()` — exposes the resource and its policy. |
 | **API consumer** | `receiveRequest()` … `deliverAnswer()` — asks and reads the page. |
-| **HTTP framework** | Carries the request (Express · Fastify · Hono). |
+| **HTTP framework** | Carries the request (Express · NestJS · Fastify · Hono). |
 | **Prisma** | Describes the resource and answers the plan. |
 | **Data store** | Holds the records. |

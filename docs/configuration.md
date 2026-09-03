@@ -1,7 +1,9 @@
 # Configuration
 
 `createAutoRead(options)` returns an `AutoReadEndpoint`. Bind it with `applyTo`
-(Express), `applyToFastify` or `applyToHono`.
+(Express), `applyToFastify` or `applyToHono`. In NestJS, register the same endpoint
+options through `AutoReadModule.register({ path, ...options })` from the optional
+`@didactika/prisma-autoread/nest` entry point.
 
 ## Options
 

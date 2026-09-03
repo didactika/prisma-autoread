@@ -7,8 +7,9 @@ module.exports = {
             preset: 'ts-jest',
             testEnvironment: 'node',
             transform: {
-                '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
-            }
+                '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }]
+            },
+            transformIgnorePatterns: ['node_modules/(?!(http-response-client)/)']
         },
         {
             displayName: 'integration',
@@ -16,8 +17,9 @@ module.exports = {
             preset: 'ts-jest',
             testEnvironment: 'node',
             transform: {
-                '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
-            }
+                '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }]
+            },
+            transformIgnorePatterns: ['node_modules/(?!(http-response-client)/)']
         },
         {
             displayName: 'e2e',
@@ -25,8 +27,9 @@ module.exports = {
             preset: 'ts-jest',
             testEnvironment: 'node',
             transform: {
-                '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
+                '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }]
             },
+            transformIgnorePatterns: ['node_modules/(?!(http-response-client)/)'],
             globalSetup: '<rootDir>/tests/e2e/setup.ts',
             globalTeardown: '<rootDir>/tests/e2e/teardown.ts'
         }

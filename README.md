@@ -12,6 +12,7 @@
 
 <!-- Frameworks -->
 [![Express](https://img.shields.io/badge/Express-4%20%7C%205-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![NestJS](https://img.shields.io/badge/NestJS-10%20%7C%2011%20%7C%2012-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![Fastify](https://img.shields.io/badge/Fastify-4%20%7C%205-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
 [![Hono](https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white)](https://hono.dev/)
 
@@ -19,8 +20,9 @@
 [![HTTP](https://img.shields.io/badge/HTTP-GET%20%C2%B7%20QUERY%20%C2%B7%20POST-005571)](#http-methods)
 [![Formats](https://img.shields.io/badge/out-HAL%20%C2%B7%20JSON%3AAPI%20%C2%B7%20CSV-6f42c1)](#output-formats)
 
-> Drop-in **search endpoints** for **Express + Prisma**. One declaration gives you
-> filtering, sorting, field selection, relation includes, aggregations, pagination
+> Drop-in Prisma **read/search APIs** for **Express, NestJS, Fastify and Hono**.
+> One declaration gives you filtering, sorting, field selection, relation includes,
+> aggregations, pagination
 > (offset **and** cursor) and multiple response formats — over `GET`, the new
 > `QUERY` method, or `POST`. Query it *as if you were writing Prisma*.
 
@@ -61,33 +63,33 @@ QUERY /users     { "where": { "age": { "gte": 30 } }, "orderBy": [{ "createdAt":
 
 ## Features
 
-- 🔎 **Prisma-native filtering** — the query mirrors Prisma's `where`, coerced and
+- **Prisma-native filtering** — the query mirrors Prisma's `where`, coerced and
   validated against your schema (DMMF). Nothing Prisma can express is lost.
-- 🧬 **Multiple input protocols** — bracket query strings, JSON bodies, **RSQL/FIQL**
+- **Multiple input protocols** — bracket query strings, JSON bodies, **RSQL/FIQL**
   and **OData `$filter`**, all producing the same query.
-- 🌐 **GET, QUERY & POST** — including the new safe/idempotent [`QUERY`](https://www.ietf.org/archive/id/draft-ietf-httpbis-safe-method-w-body-02.html) method (body-based search).
-- 🧮 **Full grammar** — `eq/ne/gt/gte/lt/lte/in/notIn/contains/startsWith/endsWith/mode/isNull`,
+- **GET, QUERY & POST** — including the new safe/idempotent [`QUERY`](https://www.ietf.org/archive/id/draft-ietf-httpbis-safe-method-w-body-02.html) method (body-based search).
+- **Full grammar** — `eq/ne/gt/gte/lt/lte/in/notIn/contains/startsWith/endsWith/mode/isNull`,
   `AND`/`OR`/`NOT`, relation `some/every/none/is/isNot`, and JSON path filters.
-- 🍃 **MongoDB embedded documents** — filter inside composite `type` blocks at any
+- **MongoDB embedded documents** — filter inside composite `type` blocks at any
   depth; `is`/`some` wrappers are inserted for you.
-- 📊 **Aggregations** — `count`, `aggregate` (`sum`/`avg`/`min`/`max`) and `group-by`.
-- 📄 **Pagination** — offset (`page`/`limit`) and **cursor** (`cursor=`), with links.
-- 🎨 **Output formats** — HAL (default), plain, JSON:API and CSV, with content negotiation.
-- 🛡️ **Security** — field/relation allow-lists, **hidden fields that never reach the
+- **Aggregations** — `count`, `aggregate` (`sum`/`avg`/`min`/`max`) and `group-by`.
+- **Pagination** — offset (`page`/`limit`) and **cursor** (`cursor=`), with links.
+- **Output formats** — HAL (default), plain, JSON:API and CSV, with content negotiation.
+- **Security** — field/relation allow-lists, **hidden fields that never reach the
   response**, **strict deny-by-default mode**, nesting guard.
-- 🔤 **Renameable keywords** — a column called `fields` or `sort`? Rename the control parameter.
-- 🧩 **Framework-agnostic** — Express, **Fastify** and **Hono** bindings (neither is a dependency).
-- 🚀 **Fast** — O(1) schema lookups, single-pass parsing, optional query-plan cache, telemetry.
-- 🔁 **Backward compatible** — the original middleware still ships and works unchanged.
-- 📦 **Typed** — full TypeScript definitions, declared separately in `*.d.ts`.
+- **Renameable keywords** — a column called `fields` or `sort`? Rename the control parameter.
+- **Framework-agnostic** — Express, **NestJS**, **Fastify** and **Hono** bindings.
+- **Fast** — O(1) schema lookups, single-pass parsing, optional query-plan cache, telemetry.
+- **Backward compatible** — the original middleware still ships and works unchanged.
+- **Typed** — full TypeScript definitions, declared separately in `*.d.ts`.
 
-📚 **[Full documentation →](./docs/README.md)** — guides, query reference and UML diagrams.
+**[Full documentation →](./docs/README.md)** — guides, query reference and UML diagrams.
 
 ---
 
 ## Compatibility
 
-Every combination below is exercised in CI on each push
+Supported versions and their current automated verification are listed below
 ([`ci.yml`](.github/workflows/ci.yml)).
 
 | | Supported | Verified in CI |
@@ -95,6 +97,7 @@ Every combination below is exercised in CI on each push
 | **Node.js** | `20` · `22` · `24` (the three current LTS lines) | full suite on each |
 | **Prisma** | `5` · `6` · `7` | unit + integration on all; end-to-end on 5 and 6 |
 | **Express** | `4` · `5` | full suite on both |
+| **NestJS** | `10` · `11` · `12` | native routing + Swagger integration on 11 |
 | **Fastify** | `4` · `5` | binding suite (not a dependency) |
 | **Hono** | `4` | binding suite (not a dependency) |
 | **TypeScript** | `5.x` | build emits CJS + ESM + `.d.ts` |
@@ -123,6 +126,8 @@ Every combination below is exercised in CI on each push
 |---|---|
 | `@prisma/client` | `>= 5.0.0` |
 | `express` | `>= 4.0.0` |
+| `@nestjs/common`, `@nestjs/core` | `10` · `11` · `12` (optional; Nest binding only) |
+| `@nestjs/swagger` | matching Nest version (optional; detected automatically) |
 
 Generate your Prisma Client (`npx prisma generate`) — the engine reads field and
 relation metadata from `Prisma.dmmf` at runtime.
@@ -342,9 +347,9 @@ createAutoRead(options): { applyTo(router): Router }
 
 | Option | Required | Default | Description |
 |---|:---:|---|---|
-| `model` | ✅ | — | Prisma model name (schema casing). |
-| `delegate` | ✅* | — | Prisma model delegate (`prisma.user`). Enables all routes. |
-| `findByFilter` | ✅* | — | Legacy-style callback, alternative to `delegate`. *One of the two. |
+| `model` | Yes | — | Prisma model name (schema casing). |
+| `delegate` | Yes* | — | Prisma model delegate (`prisma.user`). Enables all routes. |
+| `findByFilter` | Yes* | — | Legacy-style callback, alternative to `delegate`. *One of the two. |
 | `methods` | | `['GET']` | HTTP methods to expose. |
 | `routes` | | `['list']` | Routes to generate (short form or per-route path map). |
 | `output` | | `'hal'` | Default output format. |
@@ -381,6 +386,35 @@ createAutoRead({ … }).applyTo(expressRouter);   // Express
 createAutoRead({ … }).applyToFastify(fastify);  // Fastify
 createAutoRead({ … }).applyToHono(honoApp);     // Hono
 ```
+
+For Nest, import the optional integration entry point:
+
+```ts
+import { Module } from '@nestjs/common';
+import { AutoReadModule } from '@didactika/prisma-autoread/nest';
+import { prisma } from './prisma';
+
+@Module({
+    imports: [
+        AutoReadModule.register({
+            path: 'users',
+            model: 'User',
+            delegate: prisma.user,
+            methods: ['GET'],
+            routes: ['list', 'count'],
+            legacy: false,
+        }),
+    ],
+})
+export class AppModule {}
+```
+
+The generated handlers are native Nest routes, so `RouterExplorer` logs them normally.
+When `@nestjs/swagger` is installed, prisma-autoread detects it and automatically adds
+OpenAPI tags, operations, parameters, bodies, responses and content types. They appear
+in `SwaggerModule.createDocument()` with no prisma-autoread-specific Swagger setup.
+Nest 12 is required only when `methods` includes `QUERY`; `GET` and `POST` work on
+Nest 10–12.
 
 Fastify and Hono are typed structurally, so neither is a dependency. See
 [docs/frameworks.md](./docs/frameworks.md).
@@ -462,7 +496,7 @@ modern grammar, set `legacy: false`. `QUERY`/`POST` bodies are always Prisma-nat
 
 ```
 HTTP (GET | QUERY | POST)
-  → Binding          (Express / Fastify / Hono)
+  → Binding          (Express / NestJS / Fastify / Hono)
     → EndpointController   (framework-agnostic pipeline)
       → InputAdapter       (query / rsql / odata / json / legacy)
         → QueryBuilder     (validate + coerce + map operators, DMMF- and security-aware)
