@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-03
+
+Adds native NestJS integration with optional Swagger/OpenAPI metadata.
+
 ### Added
 
 - Optional NestJS 10–12 integration at `@didactika/prisma-autoread/nest` through
