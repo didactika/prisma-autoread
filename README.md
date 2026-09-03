@@ -12,6 +12,7 @@
 
 <!-- Frameworks -->
 [![Express](https://img.shields.io/badge/Express-4%20%7C%205-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![NestJS](https://img.shields.io/badge/NestJS-10%20%7C%2011%20%7C%2012-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![Fastify](https://img.shields.io/badge/Fastify-4%20%7C%205-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
 [![Hono](https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white)](https://hono.dev/)
 
@@ -76,7 +77,7 @@ QUERY /users     { "where": { "age": { "gte": 30 } }, "orderBy": [{ "createdAt":
 - 🛡️ **Security** — field/relation allow-lists, **hidden fields that never reach the
   response**, **strict deny-by-default mode**, nesting guard.
 - 🔤 **Renameable keywords** — a column called `fields` or `sort`? Rename the control parameter.
-- 🧩 **Framework-agnostic** — Express, **Fastify** and **Hono** bindings (neither is a dependency).
+- 🧩 **Framework-agnostic** — Express, **NestJS**, **Fastify** and **Hono** bindings.
 - 🚀 **Fast** — O(1) schema lookups, single-pass parsing, optional query-plan cache, telemetry.
 - 🔁 **Backward compatible** — the original middleware still ships and works unchanged.
 - 📦 **Typed** — full TypeScript definitions, declared separately in `*.d.ts`.
@@ -87,7 +88,7 @@ QUERY /users     { "where": { "age": { "gte": 30 } }, "orderBy": [{ "createdAt":
 
 ## Compatibility
 
-Every combination below is exercised in CI on each push
+Supported versions and their current automated verification are listed below
 ([`ci.yml`](.github/workflows/ci.yml)).
 
 | | Supported | Verified in CI |
@@ -95,6 +96,7 @@ Every combination below is exercised in CI on each push
 | **Node.js** | `20` · `22` · `24` (the three current LTS lines) | full suite on each |
 | **Prisma** | `5` · `6` · `7` | unit + integration on all; end-to-end on 5 and 6 |
 | **Express** | `4` · `5` | full suite on both |
+| **NestJS** | `10` · `11` · `12` | native routing + Swagger integration on 11 |
 | **Fastify** | `4` · `5` | binding suite (not a dependency) |
 | **Hono** | `4` | binding suite (not a dependency) |
 | **TypeScript** | `5.x` | build emits CJS + ESM + `.d.ts` |
@@ -123,6 +125,8 @@ Every combination below is exercised in CI on each push
 |---|---|
 | `@prisma/client` | `>= 5.0.0` |
 | `express` | `>= 4.0.0` |
+| `@nestjs/common`, `@nestjs/core` | `10` · `11` · `12` (optional; Nest binding only) |
+| `@nestjs/swagger` | matching Nest version (optional; detected automatically) |
 
 Generate your Prisma Client (`npx prisma generate`) — the engine reads field and
 relation metadata from `Prisma.dmmf` at runtime.
@@ -381,6 +385,35 @@ createAutoRead({ … }).applyTo(expressRouter);   // Express
 createAutoRead({ … }).applyToFastify(fastify);  // Fastify
 createAutoRead({ … }).applyToHono(honoApp);     // Hono
 ```
+
+For Nest, import the optional integration entry point:
+
+```ts
+import { Module } from '@nestjs/common';
+import { AutoReadModule } from '@didactika/prisma-autoread/nest';
+import { prisma } from './prisma';
+
+@Module({
+    imports: [
+        AutoReadModule.register({
+            path: 'users',
+            model: 'User',
+            delegate: prisma.user,
+            methods: ['GET'],
+            routes: ['list', 'count'],
+            legacy: false,
+        }),
+    ],
+})
+export class AppModule {}
+```
+
+The generated handlers are native Nest routes, so `RouterExplorer` logs them normally.
+When `@nestjs/swagger` is installed, prisma-autoread detects it and automatically adds
+OpenAPI tags, operations, parameters, bodies, responses and content types. They appear
+in `SwaggerModule.createDocument()` with no prisma-autoread-specific Swagger setup.
+Nest 12 is required only when `methods` includes `QUERY`; `GET` and `POST` work on
+Nest 10–12.
 
 Fastify and Hono are typed structurally, so neither is a dependency. See
 [docs/frameworks.md](./docs/frameworks.md).
